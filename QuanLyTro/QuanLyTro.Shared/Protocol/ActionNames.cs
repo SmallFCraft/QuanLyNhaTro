@@ -1,0 +1,45 @@
+namespace QuanLyTro.Shared.Protocol;
+
+public static class ActionNames
+{
+    // M1 - xac thuc / tai khoan / phan quyen / cau hinh
+    public const string DANG_NHAP = "DANG_NHAP";
+    public const string DANG_XUAT = "DANG_XUAT";
+    public const string DOI_MAT_KHAU = "DOI_MAT_KHAU";
+    public const string TAI_KHOAN_LAY_TAT_CA = "TAI_KHOAN_LAY_TAT_CA";
+    public const string TAI_KHOAN_TAO = "TAI_KHOAN_TAO";
+    public const string TAI_KHOAN_CAP_NHAT = "TAI_KHOAN_CAP_NHAT";
+    public const string TAI_KHOAN_KHOA = "TAI_KHOAN_KHOA";
+    public const string TAI_KHOAN_MO_KHOA = "TAI_KHOAN_MO_KHOA";
+    public const string TAI_KHOAN_DAT_LAI_MAT_KHAU = "TAI_KHOAN_DAT_LAI_MAT_KHAU";
+    public const string TAI_KHOAN_XOA = "TAI_KHOAN_XOA";
+    public const string PHAN_QUYEN_LAY_MA_TRAN = "PHAN_QUYEN_LAY_MA_TRAN";
+    public const string PHAN_QUYEN_CAP_NHAT_VAI_TRO = "PHAN_QUYEN_CAP_NHAT_VAI_TRO";
+    public const string CAU_HINH_LAY = "CAU_HINH_LAY";
+    public const string CAU_HINH_DAY_DU = "CAU_HINH_DAY_DU";
+    public const string CAU_HINH_CAP_NHAT = "CAU_HINH_CAP_NHAT";
+
+    // M2 - khu tro / phong / nguoi thue
+    public const string KHU_TRO_LAY_TAT_CA = "KHU_TRO_LAY_TAT_CA";
+    public const string KHU_TRO_THEM = "KHU_TRO_THEM";
+    public const string KHU_TRO_CAP_NHAT = "KHU_TRO_CAP_NHAT";
+    public const string KHU_TRO_PHAN_CONG_QUAN_LY = "KHU_TRO_PHAN_CONG_QUAN_LY";
+    public const string KHU_TRO_XOA = "KHU_TRO_XOA";
+    public const string KHU_TRO_NGUNG_HOAT_DONG = "KHU_TRO_NGUNG_HOAT_DONG";
+    public const string PHONG_LAY_TAT_CA = "PHONG_LAY_TAT_CA";
+    public const string PHONG_LAY_CHI_TIET = "PHONG_LAY_CHI_TIET";
+    public const string PHONG_THEM = "PHONG_THEM";
+    public const string PHONG_CAP_NHAT = "PHONG_CAP_NHAT";
+    public const string PHONG_XOA = "PHONG_XOA";
+    public const string KHACH_THUE_DANG_KY = "KHACH_THUE_DANG_KY";
+    public const string KHACH_THUE_THEM = "KHACH_THUE_THEM";
+    public const string KHACH_THUE_CAP_NHAT = "KHACH_THUE_CAP_NHAT";
+    public const string KHACH_THUE_CAP_NHAT_TAM_TRU = "KHACH_THUE_CAP_NHAT_TAM_TRU";
+    public const string KHACH_THUE_CHUYEN_PHONG = "KHACH_THUE_CHUYEN_PHONG";
+    public const string KHACH_THUE_TRA_PHONG = "KHACH_THUE_TRA_PHONG";
+    public const string KHACH_THUE_XOA = "KHACH_THUE_XOA";
+    public const string KHACH_THUE_TIM_KIEM = "KHACH_THUE_TIM_KIEM";
+    public const string KHACH_THUE_HO_SO_CUA_TOI = "KHACH_THUE_HO_SO_CUA_TOI";
+    public const string KHACH_THUE_CAP_NHAT_LIEN_HE = "KHACH_THUE_CAP_NHAT_LIEN_HE";
+    public const string KHACH_THUE_LAY_THEO_PHONG = "KHACH_THUE_LAY_THEO_PHONG";
+}
