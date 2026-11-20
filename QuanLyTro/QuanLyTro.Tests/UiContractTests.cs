@@ -18,18 +18,22 @@ public class UiContractTests
     [TestMethod]
     public void Login_Page_HasRequiredElements()
     {
-        var html = File.ReadAllText(Path.Combine(FindWwwroot(), "index.html"));
-        StringAssert.Contains(html, "id=\"tenDangNhap\"");
-        StringAssert.Contains(html, "id=\"matKhau\"");
-        StringAssert.Contains(html, "id=\"btnDangNhap\"");
+        var html = File.ReadAllText(Path.Combine(FindWwwroot(), "auth", "index.html"));
+        StringAssert.Contains(html, "id=\"loginUsername\"");
+        StringAssert.Contains(html, "id=\"loginPassword\"");
+        StringAssert.Contains(html, "id=\"loginForm\"");
+        StringAssert.Contains(html, "id=\"formRegister\"", "BR-17: đăng ký khách thuê phải có mặt");
     }
 
     [TestMethod]
-    public void ApiJs_UsesRequestId_OverBridge()
+    public void BridgeJs_UsesRequestId_OverWebView2()
     {
-        var js = File.ReadAllText(Path.Combine(FindWwwroot(), "shared", "js", "api.js"));
+        var js = File.ReadAllText(Path.Combine(FindWwwroot(), "shared", "js", "bridge.js"));
         StringAssert.Contains(js, "requestId");
         StringAssert.Contains(js, "postMessage");
+        // shim tương thích cho JS nghiệp vụ gọi window.bridge.call
+        var chrome = File.ReadAllText(Path.Combine(FindWwwroot(), "shared", "js", "chrome.js"));
+        StringAssert.Contains(chrome, "window.bridge");
     }
 
     [TestMethod]
@@ -41,18 +45,28 @@ public class UiContractTests
             var path = Path.Combine(root, shell, "index.html");
             Assert.IsTrue(File.Exists(path), $"thiếu shell {shell}");
             var html = File.ReadAllText(path);
-            StringAssert.Contains(html, "shared/js/api.js", $"{shell} phải nạp api.js");
-            StringAssert.Contains(html, "shared/js/shell.js", $"{shell} phải nạp shell.js (nút đăng xuất dùng chung)");
+            StringAssert.Contains(html, "shared/js/bridge.js", $"{shell} phải nạp bridge.js");
+            StringAssert.Contains(html, "shared/js/chrome.js", $"{shell} phải nạp chrome.js (chrome + shim đăng xuất)");
         }
     }
 
     [TestMethod]
-    public void ChuTro_Shell_HasKhuListAndPhongForm()
+    public void ChuTro_Shell_HasLegacyBusinessPanes()
     {
         var html = File.ReadAllText(Path.Combine(FindWwwroot(), "chutro", "index.html"));
-        StringAssert.Contains(html, "id=\"khuList\"");
-        StringAssert.Contains(html, "id=\"phongTable\"");
-        StringAssert.Contains(html, "KHU_TRO_THEM");
-        StringAssert.Contains(html, "PHONG_THEM");
+        StringAssert.Contains(html, "id=\"tab-dash\"");
+        StringAssert.Contains(html, "id=\"tab-phong\"");
+        StringAssert.Contains(html, "id=\"phong-body\"");
+        StringAssert.Contains(html, "js/main.js");
+        StringAssert.Contains(html, "js/phong.js");
+    }
+
+    [TestMethod]
+    public void KhachThue_Shell_KeepsContractIds()
+    {
+        var html = File.ReadAllText(Path.Combine(FindWwwroot(), "khachthue", "index.html"));
+        StringAssert.Contains(html, "id=\"tenantTabs\"");
+        StringAssert.Contains(html, "id=\"tab-nhan-phong\"");
+        StringAssert.Contains(html, "id=\"checkinTabs\"");
     }
 }

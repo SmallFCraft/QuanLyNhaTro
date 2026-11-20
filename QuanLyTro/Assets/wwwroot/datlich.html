@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Đặt lịch xem phòng — Quản lý nhà trọ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared/css/tokens.css?v=2" />
+  <link rel="stylesheet" href="shared/css/base.css?v=2" />
+</head>
+<body>
+  <div class="glass-orbs" aria-hidden="true"><span class="orb orb-1"></span><span class="orb orb-2"></span><span class="orb orb-3"></span><span class="orb orb-4"></span></div>
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+  <section id="s08b" class="screen-view active">
+<div class="public-page">
+          <header class="public-header">
+            <div>
+              <div style="font-size:15px; font-weight:700; color:var(--navy);">QUẢN LÝ NHÀ TRỌ</div>
+              <div style="font-size:11px; color:var(--text-muted);">Phường Ngũ Hành Sơn — TP. Đà Nẵng</div>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" data-goto="s01">Đăng nhập</button>
+          </header>
+          <div class="public-hero">
+            <div class="public-hero-inner">
+              <h1>Xem phòng trọ quanh Ngũ Hành Sơn</h1>
+              <p>Phòng trống cập nhật trực tiếp — đặt lịch hẹn xem phòng không cần tài khoản.</p>
+            </div>
+          </div>
+          <div class="public-body">
+            <div class="vacant-grid" id="publicVacantGrid"></div>
+            <div class="card">
+              <div class="card-header"><h2 class="card-title">Đặt lịch xem phòng</h2></div>
+              <form id="publicBookingForm" novalidate>
+                <div class="field"><label for="bookHoTen">Họ tên</label><input id="bookHoTen" class="input" required /></div>
+                <div class="field"><label for="bookSdt">SĐT</label><input id="bookSdt" class="input mono" required /></div>
+                <div class="field">
+                  <label for="bookPhong">Chọn phòng</label>
+                  <select id="bookPhong" class="select">
+                    <option value="103">Phòng 103 — Khu A (2.500.000 đ/tháng)</option>
+                    <option value="106">Phòng 106 — Khu A (2.300.000 đ/tháng)</option>
+                    <option value="202">Phòng 202 — Khu B (2.700.000 đ/tháng)</option>
+                    <option value="205">Phòng 205 — Khu B (2.500.000 đ/tháng)</option>
+                  </select>
+                </div>
+                <div class="field"><label for="bookThoiGian">Thời gian</label><input id="bookThoiGian" class="input" type="datetime-local" value="2026-11-22T09:30" required /></div>
+                <div id="bookingFeedback" style="font-size:13px; font-weight:600; min-height:20px; margin-bottom:6px;"></div>
+                <button type="submit" class="btn btn-primary" style="width:100%;">Gửi yêu cầu</button>
+                <p class="helper-text" style="text-align:center;">Không quá 3 yêu cầu chờ duyệt mỗi ngày từ một số điện thoại</p>
+              </form>
+            </div>
+          </div>
+        </div>
+  </section>
+  <div class="modal-backdrop" id="appModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-box">
+      <div class="card-header" style="margin-bottom:12px;"><h2 class="card-title" id="modalTitle">Thông báo</h2><button type="button" class="icon-btn" id="closeModalBtn" aria-label="Đóng">✕</button></div>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+  <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+  <script src="shared/js/bridge.js?v=2"></script>
+</body>
+</html>

@@ -1,31 +1,68 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="utf-8">
-<title>Shell Lễ tân</title>
-<link rel="stylesheet" href="../shared/css/app.css">
-</head>
-<body>
-  <div id="userbar"></div>
-  <div class="content">
-    <h2>Tra cứu phòng (chỉ đọc)</h2>
-    <div id="phongTable"></div>
-    <p class="empty">Quản lý lịch kiểm tra phòng sẽ có ở M5.</p>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../shared/css/tokens.css?v=2" />
+  <link rel="stylesheet" href="../shared/css/base.css?v=2" />
+</head><body>
+  <div class="glass-orbs" aria-hidden="true"><span class="orb orb-1"></span><span class="orb orb-2"></span><span class="orb orb-3"></span><span class="orb orb-4"></span></div>
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+  <section id="s03" class="screen-view active">
+<div class="app-shell">
+          <aside class="sidebar" id="sidebarS03" aria-label="Menu Lễ tân">
+            <div class="sidebar-brand">
+              <div class="brand-left">
+                <div class="brand-mark">LT</div>
+                <div><div class="brand-text-title">QUẢN LÝ NHÀ TRỌ</div><div class="brand-text-sub">Module Lễ tân</div></div>
+              </div>
+              <button type="button" class="sidebar-close-btn" data-close-drawer="true" aria-label="Đóng menu">✕</button>
+            </div>
+            <ul class="sidebar-nav">
+              <li><button type="button" class="nav-btn active" data-goto="s03"><span>Lịch kiểm tra</span></button></li>
+            </ul>
+            <div class="sidebar-footer"><span>TCP 8888</span><span>Lễ tân</span></div>
+          </aside>
+
+          <div class="shell-main">
+            <header class="userbar">
+              <div class="userbar-left">
+                <button type="button" class="menu-toggle-btn" data-open-drawer="sidebarS03" aria-label="Mở menu">
+                  <svg class="ms-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg>
+                </button>
+                <span class="userbar-context">Module Lễ tân</span>
+              </div>
+              <div class="userbar-right">
+                <button type="button" class="conn-status"><span class="conn-dot"></span><span>Trực tuyến</span></button>
+                <span class="user-name" id="pname">Lễ tân</span>
+                <span class="role-pill">Lễ tân</span>
+                <button type="button" class="icon-btn danger" data-goto="s01" title="Đăng xuất" aria-label="Đăng xuất">
+                  <svg class="ms-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M10 3H4a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h6v-2H5V5h5V3zm4 4-1.4 1.4L15.2 11H9v2h6.2l-2.6 2.6L14 17l5-5-5-5z"/></svg>
+                </button>
+              </div>
+            </header>
+            <main class="content-wrap" style="padding:16px;">
+<div class="headline"><div class="l"><h1 id="ptitle">Lịch kiểm tra phòng</h1></div></div>
+<div class="tabs"><div class="tab on" data-ltab="lich" onclick="loadLeTanTab('lich')">Lịch kiểm tra <span class="cnt" id="cnt-lich">0</span></div></div>
+<div class="content"><div id="ltab-lich"><p style="color:var(--dim)">Đang tải lịch kiểm tra…</p></div></div>
+            </main>
+          </div>
+</div>
+  </section>
+  <div class="modal-backdrop" id="appModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-box">
+      <div class="card-header" style="margin-bottom:12px;"><h2 class="card-title" id="modalTitle">Thông báo</h2><button type="button" class="icon-btn" id="closeModalBtn" aria-label="Đóng">✕</button></div>
+      <div id="modalBody"></div>
+    </div>
   </div>
-  <script src="../shared/js/api.js"></script>
-  <script src="../shared/js/shell.js"></script>
-  <script>
-    shell.render('userbar', { vaiTro: 'Lễ tân', hoTen: '' });
-    (async () => {
-      const resp = await api.call('PHONG_LAY_TAT_CA');
-      if (!resp.success) return;
-      const rows = resp.data.map(p =>
-        `<tr><td>${p.soPhong}</td><td>${p.giaThue.toLocaleString('vi-VN')} đ</td>
-         <td class="trang-thai ${p.trangThai}">${p.trangThai}</td></tr>`).join('');
-      document.getElementById('phongTable').innerHTML =
-        rows ? `<table><tr><th>Số phòng</th><th>Giá</th><th>Trạng thái</th></tr>${rows}</table>`
-             : '<div class="empty">Chưa có phòng.</div>';
-    })();
-  </script>
+  <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+  <script src="../shared/js/bridge.js?v=2"></script>
+  <script src="../shared/js/ui.js?v=2"></script>
+  <script src="../shared/js/chrome.js?v=2"></script>
+  <script src="main.js?v=2"></script>
 </body>
 </html>

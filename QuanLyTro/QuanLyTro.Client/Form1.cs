@@ -48,7 +48,7 @@ public sealed partial class Form1 : Form
         _web.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
         _web.CoreWebView2.Settings.AreDevToolsEnabled = false;
 
-        _web.CoreWebView2.Navigate("https://app.quanlytro.local/index.html");
+        _web.CoreWebView2.Navigate("https://app.quanlytro.local/auth/index.html");
     }
 
     private static string FindWwwroot()
@@ -101,7 +101,7 @@ public sealed partial class Form1 : Form
             {
                 _token = null;
                 _vaiTro = null;
-                _web.CoreWebView2.Navigate("https://app.quanlytro.local/index.html");
+                _web.CoreWebView2.Navigate("https://app.quanlytro.local/auth/index.html");
             }
         }
         catch (Exception ex)
