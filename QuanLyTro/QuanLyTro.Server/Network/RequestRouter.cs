@@ -22,14 +22,17 @@ public sealed class RequestRouter
     private static readonly HashSet<string> PublicActions = new(StringComparer.Ordinal)
     { ActionNames.DANG_NHAP, ActionNames.KHACH_THUE_DANG_KY };
 
-    public RequestRouter(Database db, SessionStore sessions)
+    public RequestRouter(Database db, SessionStore sessions,
+        Repositories.SiteRepository? siteRepo = null,
+        Repositories.RoomRepository? roomRepo = null,
+        Repositories.TenantRepository? tenantRepo = null)
     {
         _db = db;
         _sessions = sessions;
         _accounts = new AccountService(db, sessions);
-        var siteRepo = new Repositories.SiteRepository(db);
-        var roomRepo = new Repositories.RoomRepository(db);
-        var tenantRepo = new Repositories.TenantRepository(db);
+        siteRepo ??= new Repositories.SiteRepository(db);
+        roomRepo ??= new Repositories.RoomRepository(db);
+        tenantRepo ??= new Repositories.TenantRepository(db);
         _sites = new SiteService(siteRepo, roomRepo, sessions);
         _rooms = new RoomService(roomRepo, siteRepo);
         _tenants = new TenantService(tenantRepo, roomRepo, siteRepo);

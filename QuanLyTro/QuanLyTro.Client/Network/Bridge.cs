@@ -49,9 +49,7 @@ public sealed class TcpClientTransport : IDisposable
             finally { _writeLock.Release(); }
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-            var done = await Task.WhenAny(tcs.Task, Task.Delay(Timeout.Infinite, cts.Token));
-            if (done != tcs.Task) throw new TimeoutException("Server không phản hồi trong 15 giây.");
-            return await tcs.Task;
+            return await tcs.Task.WaitAsync(cts.Token);
         }
         finally
         {

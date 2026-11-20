@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<TestSequence>
+  <Test Name="QuanLyTro.Tests.E2E.RealServerE2E.E2E_Login_Chutro_TaoKhuPhong_DangKyKhach" DisplayName="E2E_Login_Chutro_TaoKhuPhong_DangKyKhach" Source="D:\Codes\QuanLyNhaTro\QuanLyTro\QuanLyTro.Tests\bin\Debug\net8.0\QuanLyTro.Tests.dll" Completed="False" />
+</TestSequence>
