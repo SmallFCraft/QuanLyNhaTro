@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Shell Lễ tân</title>
+<link rel="stylesheet" href="../shared/css/app.css">
+</head>
+<body>
+  <div id="userbar"></div>
+  <div class="content">
+    <h2>Tra cứu phòng (chỉ đọc)</h2>
+    <div id="phongTable"></div>
+    <p class="empty">Quản lý lịch kiểm tra phòng sẽ có ở M5.</p>
+  </div>
+  <script src="../shared/js/api.js"></script>
+  <script src="../shared/js/shell.js"></script>
+  <script>
+    shell.render('userbar', { vaiTro: 'Lễ tân', hoTen: '' });
+    (async () => {
+      const resp = await api.call('PHONG_LAY_TAT_CA');
+      if (!resp.success) return;
+      const rows = resp.data.map(p =>
+        `<tr><td>${p.soPhong}</td><td>${p.giaThue.toLocaleString('vi-VN')} đ</td>
+         <td class="trang-thai ${p.trangThai}">${p.trangThai}</td></tr>`).join('');
+      document.getElementById('phongTable').innerHTML =
+        rows ? `<table><tr><th>Số phòng</th><th>Giá</th><th>Trạng thái</th></tr>${rows}</table>`
+             : '<div class="empty">Chưa có phòng.</div>';
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+:root {
+  --navy: #1f3864;
+  --gold: #bf9000;
+  --bg: #f4f6fa;
+  --danger: #c0392b;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 14px;
+  background: var(--bg);
+  color: #222;
+}
+
+/* ---- login ---- */
+.login-body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+.login-card {
+  background: #fff; padding: 40px 48px; border-radius: 8px;
+  border: 2px solid var(--navy); box-shadow: 0 2px 12px rgba(0,0,0,.12);
+  width: 380px;
+}
+.login-card h1 { color: var(--navy); font-size: 22px; text-align: center; margin: 0 0 4px; }
+.login-card .sub { text-align: center; color: #777; margin: 0 0 24px; }
+.login-card label { display: block; margin: 12px 0 4px; font-weight: 600; color: var(--navy); }
+.login-card input {
+  width: 100%; padding: 10px 12px; border: 1px solid #bbb; border-radius: 4px; font-size: 14px;
+}
+.login-card input:focus { outline: 2px solid var(--gold); border-color: var(--gold); }
+.login-card button {
+  width: 100%; margin-top: 20px; padding: 12px; background: var(--navy); color: #fff;
+  border: none; border-radius: 4px; font-size: 15px; font-weight: 600; cursor: pointer;
+}
+.login-card button:hover { background: #2a4a7f; }
+.error { color: var(--danger); text-align: center; margin-top: 12px; }
+
+/* ---- shell chung ---- */
+.userbar {
+  background: var(--navy); color: #fff; padding: 10px 20px;
+  display: flex; align-items: center; gap: 16px;
+}
+.userbar .ten { font-weight: 700; }
+.userbar .vai-tro { background: var(--gold); color: #fff; padding: 2px 10px; border-radius: 10px; font-size: 12px; }
+.userbar .ket-noi { margin-left: auto; font-size: 12px; }
+.userbar .ket-noi.ok::before { content: "● "; color: #7fe37f; }
+.userbar button { background: transparent; border: 1px solid #fff3; color: #fff; padding: 6px 14px; border-radius: 4px; cursor: pointer; }
+.userbar button:hover { background: #ffffff22; }
+
+.content { padding: 20px; max-width: 1100px; margin: 0 auto; }
+.content h2 { color: var(--navy); margin-top: 0; }
+
+table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 6px; overflow: hidden; }
+th { background: var(--navy); color: #fff; text-align: left; padding: 10px 12px; font-size: 13px; }
+td { padding: 9px 12px; border-bottom: 1px solid #e4e7ee; font-size: 13px; }
+tr:hover td { background: #f0f4fb; }
+
+.btn {
+  padding: 7px 14px; border: none; border-radius: 4px; cursor: pointer;
+  background: var(--navy); color: #fff; font-size: 13px;
+}
+.btn.secondary { background: #8892a6; }
+.btn:hover { filter: brightness(1.1); }
+
+form.inline { background: #fff; padding: 16px 20px; border-radius: 6px; margin-bottom: 16px; display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+form.inline label { display: block; font-size: 12px; color: #555; margin-bottom: 3px; }
+form.inline input, form.inline select { padding: 8px 10px; border: 1px solid #bbb; border-radius: 4px; font-size: 13px; }
+
+.empty { color: #888; padding: 24px; text-align: center; background: #fff; border-radius: 6px; }
+.trang-thai.Trong { color: #1e7d1e; font-weight: 600; }
+.trang-thai.DaThue { color: #a06000; font-weight: 600; }
+.trang-thai.BaoTri { color: var(--danger); font-weight: 600; }

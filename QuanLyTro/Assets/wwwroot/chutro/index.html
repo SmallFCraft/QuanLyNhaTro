@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Shell Chủ trọ</title>
+<link rel="stylesheet" href="../shared/css/app.css">
+</head>
+<body>
+  <div id="userbar"></div>
+  <div class="content">
+    <h2>Khu trọ</h2>
+    <form class="inline" id="formKhu">
+      <div><label for="tenKhuTro">Tên khu</label><input id="tenKhuTro" required></div>
+      <div><label for="diaChi">Địa chỉ</label><input id="diaChi" required></div>
+      <button class="btn" type="submit">Thêm khu</button>
+    </form>
+    <div id="khuList"></div>
+
+    <h2>Phòng</h2>
+    <form class="inline" id="formPhong">
+      <div><label for="pKhu">Khu ID</label><input id="pKhu" type="number" required></div>
+      <div><label for="pSo">Số phòng</label><input id="pSo" required></div>
+      <div><label for="pGia">Giá thuê</label><input id="pGia" type="number" required></div>
+      <div><label for="pNguoi">Sức chứa</label><input id="pNguoi" type="number" required></div>
+      <button class="btn" type="submit">Thêm phòng</button>
+    </form>
+    <div id="phongTable"></div>
+  </div>
+
+  <script src="../shared/js/api.js"></script>
+  <script src="../shared/js/shell.js"></script>
+  <script>
+    const info = JSON.parse(sessionStorage.getItem('dangNhap') || '{"hoTen":"","vaiTro":"ChuTro"}');
+    shell.render('userbar', { vaiTro: 'Chủ trọ', hoTen: info.hoTen });
+
+    async function loadKhu() {
+      const resp = await api.call('KHU_TRO_LAY_TAT_CA');
+      if (!resp.success) return;
+      const rows = resp.data.map(k =>
+        `<tr><td>${k.id}</td><td>${k.tenKhuTro}</td><td>${k.diaChi}</td>
+         <td>${k.biNgungHoatDong ? 'Ngừng' : 'Đang hoạt động'}</td></tr>`).join('');
+      document.getElementById('khuList').innerHTML =
+        rows ? `<table><tr><th>ID</th><th>Tên khu</th><th>Địa chỉ</th><th>Trạng thái</th></tr>${rows}</table>`
+             : '<div class="empty">Chưa có khu trọ nào.</div>';
+    }
+
+    async function loadPhong() {
+      const resp = await api.call('PHONG_LAY_TAT_CA');
+      if (!resp.success) return;
+      const rows = resp.data.map(p =>
+        `<tr><td>${p.id}</td><td>${p.khuTroId}</td><td>${p.soPhong}</td>
+         <td>${p.giaThue.toLocaleString('vi-VN')} đ</td><td>${p.soNguoiToiDa}</td>
+         <td class="trang-thai ${p.trangThai}">${p.trangThai}</td></tr>`).join('');
+      document.getElementById('phongTable').innerHTML =
+        rows ? `<table><tr><th>ID</th><th>Khu</th><th>Số phòng</th><th>Giá</th><th>Sức chứa</th><th>Trạng thái</th></tr>${rows}</table>`
+             : '<div class="empty">Chưa có phòng nào.</div>';
+    }
+
+    document.getElementById('formKhu').addEventListener('submit', async e => {
+      e.preventDefault();
+      const resp = await api.call('KHU_TRO_THEM', {
+        tenKhuTro: document.getElementById('tenKhuTro').value,
+        diaChi: document.getElementById('diaChi').value,
+      });
+      if (resp.success) { e.target.reset(); loadKhu(); }
+      else alert(resp.message);
+    });
+
+    document.getElementById('formPhong').addEventListener('submit', async e => {
+      e.preventDefault();
+      const resp = await api.call('PHONG_THEM', {
+        khuTroId: Number(document.getElementById('pKhu').value),
+        soPhong: document.getElementById('pSo').value,
+        giaThue: Number(document.getElementById('pGia').value),
+        soNguoiToiDa: Number(document.getElementById('pNguoi').value),
+      });
+      if (resp.success) { e.target.reset(); loadPhong(); }
+      else alert(resp.message);
+    });
+
+    loadKhu(); loadPhong();
+  </script>
+</body>
+</html>

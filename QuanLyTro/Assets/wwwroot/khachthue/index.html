@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Shell Khách thuê</title>
+<link rel="stylesheet" href="../shared/css/app.css">
+</head>
+<body>
+  <div id="userbar"></div>
+  <div class="content">
+    <h2>Hồ sơ của tôi</h2>
+    <div id="hoSo"></div>
+  </div>
+
+  <script src="../shared/js/api.js"></script>
+  <script src="../shared/js/shell.js"></script>
+  <script>
+    shell.render('userbar', { vaiTro: 'Khách thuê', hoTen: '' });
+
+    (async () => {
+      const resp = await api.call('KHACH_THUE_HO_SO_CUA_TOI');
+      if (!resp.success) return;
+      const d = resp.data;
+      document.getElementById('hoSo').innerHTML = `
+        <table>
+          <tr><th>Họ tên</th><td>${d.hoTen}</td></tr>
+          <tr><th>CCCD</th><td>${d.cccd}</td></tr>
+          <tr><th>Ngày sinh</th><td>${d.ngaySinh}</td></tr>
+          <tr><th>SĐT</th><td>${d.soDienThoai}</td></tr>
+          <tr><th>Quê quán</th><td>${d.queQuan}</td></tr>
+          <tr><th>Phòng đang ở</th><td>${d.phongId ?? 'Chưa nhận phòng'}</td></tr>
+          <tr><th>Tạm trú</th><td>${d.daDangKyTamTru ? 'Đã đăng ký' : 'Chưa đăng ký'}</td></tr>
+        </table>`;
+    })();
+  </script>
+</body>
+</html>

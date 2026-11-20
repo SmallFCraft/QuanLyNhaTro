@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Shell Quản lý</title>
+<link rel="stylesheet" href="../shared/css/app.css">
+</head>
+<body>
+  <div id="userbar"></div>
+  <div class="content">
+    <h2>Phòng trong khu được gán</h2>
+    <div id="phongTable"></div>
+    <h2>Người thuê</h2>
+    <form class="inline" id="formTimKiem">
+      <div><label for="keyword">Tìm theo tên/CCCD/SĐT</label><input id="keyword"></div>
+      <button class="btn secondary" type="submit">Tìm kiếm</button>
+    </form>
+    <div id="tenantTable"></div>
+  </div>
+
+  <script src="../shared/js/api.js"></script>
+  <script src="../shared/js/shell.js"></script>
+  <script>
+    shell.render('userbar', { vaiTro: 'Quản lý', hoTen: '' });
+
+    async function loadPhong() {
+      const resp = await api.call('PHONG_LAY_TAT_CA');
+      if (!resp.success) return;
+      const rows = resp.data.map(p =>
+        `<tr><td>${p.soPhong}</td><td>${p.giaThue.toLocaleString('vi-VN')} đ</td>
+         <td>${p.soNguoiToiDa}</td><td class="trang-thai ${p.trangThai}">${p.trangThai}</td></tr>`).join('');
+      document.getElementById('phongTable').innerHTML =
+        rows ? `<table><tr><th>Số phòng</th><th>Giá</th><th>Sức chứa</th><th>Trạng thái</th></tr>${rows}</table>`
+             : '<div class="empty">Khu của bạn chưa có phòng.</div>';
+    }
+
+    document.getElementById('formTimKiem').addEventListener('submit', async e => {
+      e.preventDefault();
+      const resp = await api.call('KHACH_THUE_TIM_KIEM', { keyword: document.getElementById('keyword').value });
+      if (!resp.success) { alert(resp.message); return; }
+      const rows = resp.data.map(t =>
+        `<tr><td>${t.hoTen}</td><td>${t.cccd}</td><td>${t.soDienThoai}</td>
+         <td>${t.phongId ?? '—'}</td><td>${t.daDangKyTamTru ? 'Đã đăng ký' : 'Chưa đăng ký'}</td></tr>`).join('');
+      document.getElementById('tenantTable').innerHTML =
+        rows ? `<table><tr><th>Họ tên</th><th>CCCD</th><th>SĐT</th><th>Phòng</th><th>Tạm trú</th></tr>${rows}</table>`
+             : '<div class="empty">Không tìm thấy người thuê nào.</div>';
+    });
+
+    loadPhong();
+  </script>
+</body>
+</html>
