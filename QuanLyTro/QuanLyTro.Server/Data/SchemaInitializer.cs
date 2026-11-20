@@ -27,7 +27,8 @@ public sealed class SchemaInitializer
     ngay_tao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ngay_cap_nhat DATETIME NULL,
     CONSTRAINT CK_tk_vaitro CHECK (vai_tro IN ('ChuTro','QuanLy','LeTan','NhanVien','KhachThue','CongAn')),
-    CONSTRAINT CK_tk_khu CHECK (vai_tro <> 'QuanLy' OR khu_tro_id IS NOT NULL)
+    CONSTRAINT CK_tk_khu CHECK (khu_tro_id IS NULL OR vai_tro = 'QuanLy'),
+    CONSTRAINT CK_tk_mon CHECK (chuyen_mon IS NULL OR vai_tro = 'NhanVien')
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
 
         await _db.ExecuteAsync(@"CREATE TABLE IF NOT EXISTS quyen_vai_tro (

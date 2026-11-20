@@ -22,7 +22,11 @@ public sealed class Database
     {
         await using var conn = Open();
         await using var cmd = Bind(conn.CreateCommand(), sql, param);
-        return await cmd.ExecuteNonQueryAsync();
+        var affected = await cmd.ExecuteNonQueryAsync();
+        // INSERT trả về last insert id; UPDATE/DELETE trả số dòng affected
+        return cmd.CommandText.TrimStart().StartsWith("INSERT", StringComparison.OrdinalIgnoreCase)
+            ? (int)cmd.LastInsertedId
+            : affected;
     }
 
     public async Task<object?> ScalarAsync(string sql, object? param = null)
@@ -35,7 +39,9 @@ public sealed class Database
     public async Task<T?> ScalarT<T>(string sql, object? param = null)
     {
         var raw = await ScalarAsync(sql, param);
-        return raw is null ? default : (T)Convert.ChangeType(raw, typeof(T));
+        if (raw is null) return default;
+        var targetType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+        return (T)Convert.ChangeType(raw, targetType);
     }
 
     public async Task<List<Dictionary<string, object?>>> QueryAsync(string sql, object? param = null)
