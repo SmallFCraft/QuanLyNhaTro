@@ -17,6 +17,7 @@ public sealed class RequestRouter
     private readonly AccountService _accounts;
     private readonly SiteService _sites;
     private readonly RoomService _rooms;
+    private readonly TenantService _tenants;
 
     private static readonly HashSet<string> PublicActions = new(StringComparer.Ordinal)
     { ActionNames.DANG_NHAP, ActionNames.KHACH_THUE_DANG_KY };
@@ -28,8 +29,10 @@ public sealed class RequestRouter
         _accounts = new AccountService(db, sessions);
         var siteRepo = new Repositories.SiteRepository(db);
         var roomRepo = new Repositories.RoomRepository(db);
+        var tenantRepo = new Repositories.TenantRepository(db);
         _sites = new SiteService(siteRepo, roomRepo, sessions);
         _rooms = new RoomService(roomRepo, siteRepo);
+        _tenants = new TenantService(tenantRepo, roomRepo, siteRepo);
     }
 
     public async Task<ResponsePacket> HandleAsync(RequestPacket packet, ClientContext ctx)
@@ -87,7 +90,18 @@ public sealed class RequestRouter
                 ActionNames.PHONG_THEM => await _rooms.CreateAsync(session!, packet.Data),
                 ActionNames.PHONG_CAP_NHAT => await _rooms.UpdateAsync(session!, packet.Data),
                 ActionNames.PHONG_XOA => await _rooms.DeleteAsync(session!, packet.Data),
-                // M2 người thuê handlers lắp ở Task 8
+                // M2: người thuê
+                ActionNames.KHACH_THUE_DANG_KY => await _tenants.RegisterAsync(packet.Data),
+                ActionNames.KHACH_THUE_THEM => await _tenants.AddAsync(session!, packet.Data),
+                ActionNames.KHACH_THUE_CAP_NHAT => await _tenants.UpdateAsync(session!, packet.Data),
+                ActionNames.KHACH_THUE_CAP_NHAT_TAM_TRU => await _tenants.UpdateTamTruAsync(session!, packet.Data),
+                ActionNames.KHACH_THUE_CHUYEN_PHONG => await _tenants.MoveRoomAsync(session!, packet.Data),
+                ActionNames.KHACH_THUE_TRA_PHONG => await _tenants.CheckOutAsync(session!, packet.Data),
+                ActionNames.KHACH_THUE_XOA => await _tenants.DeleteAsync(session!, packet.Data),
+                ActionNames.KHACH_THUE_TIM_KIEM => await _tenants.SearchAsync(session!, packet.Data),
+                ActionNames.KHACH_THUE_HO_SO_CUA_TOI => await _tenants.GetMyProfileAsync(session!),
+                ActionNames.KHACH_THUE_CAP_NHAT_LIEN_HE => await _tenants.UpdateLienHeAsync(session!, packet.Data),
+                ActionNames.KHACH_THUE_LAY_THEO_PHONG => await _tenants.GetByPhongAsync(session!, packet.Data),
                 _ => throw new NotFoundOrDeniedException(),
             };
             return ResponsePacket.Ok(packet.RequestId, data);

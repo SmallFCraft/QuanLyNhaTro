@@ -39,7 +39,7 @@ public sealed class Database
     public async Task<T?> ScalarT<T>(string sql, object? param = null)
     {
         var raw = await ScalarAsync(sql, param);
-        if (raw is null) return default;
+        if (raw is null or DBNull) return default;
         var targetType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
         return (T)Convert.ChangeType(raw, targetType);
     }
