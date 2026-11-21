@@ -18,6 +18,7 @@ public sealed class RequestRouter
     private readonly SiteService _sites;
     private readonly RoomService _rooms;
     private readonly TenantService _tenants;
+    private readonly HopDongService _hopDongs;
 
     private static readonly HashSet<string> PublicActions = new(StringComparer.Ordinal)
     { ActionNames.DANG_NHAP, ActionNames.KHACH_THUE_DANG_KY };
@@ -36,6 +37,7 @@ public sealed class RequestRouter
         _sites = new SiteService(siteRepo, roomRepo, sessions);
         _rooms = new RoomService(roomRepo, siteRepo);
         _tenants = new TenantService(tenantRepo, roomRepo, siteRepo);
+        _hopDongs = new HopDongService(new Repositories.HopDongRepository(db), roomRepo, tenantRepo);
     }
 
     public async Task<ResponsePacket> HandleAsync(RequestPacket packet, ClientContext ctx)
@@ -100,6 +102,16 @@ public sealed class RequestRouter
                 ActionNames.KHACH_THUE_CAP_NHAT_TAM_TRU => await _tenants.UpdateTamTruAsync(session!, packet.Data),
                 ActionNames.KHACH_THUE_CHUYEN_PHONG => await _tenants.MoveRoomAsync(session!, packet.Data),
                 ActionNames.KHACH_THUE_TRA_PHONG => await _tenants.CheckOutAsync(session!, packet.Data),
+
+                // M3: hop dong + qr/pin nhan phong
+                ActionNames.HopDongTao => await _hopDongs.CreateAsync(session!, packet.Data),
+                ActionNames.HopDongGiaHan => await _hopDongs.GiaHanAsync(session!, packet.Data),
+                ActionNames.HopDongChamDut => await _hopDongs.ChamDutAsync(session!, packet.Data),
+                ActionNames.HopDongLayTatCa => await _hopDongs.GetAllAsync(session!, packet.Data),
+                ActionNames.HopDongSinhQr => await _hopDongs.SinhQrAsync(session!, packet.Data),
+                ActionNames.PhuLucLay => await _hopDongs.PhuLucLayAsync(session!, packet.Data),
+                ActionNames.PhuLucCapNhat => await _hopDongs.PhuLucCapNhatAsync(session!, packet.Data),
+                ActionNames.KhachThueNhanPhongQr => await _hopDongs.NhanPhongQrAsync(session!, packet.Data),
                 ActionNames.KHACH_THUE_XOA => await _tenants.DeleteAsync(session!, packet.Data),
                 ActionNames.KHACH_THUE_TIM_KIEM => await _tenants.SearchAsync(session!, packet.Data),
                 ActionNames.KHACH_THUE_HO_SO_CUA_TOI => await _tenants.GetMyProfileAsync(session!),
