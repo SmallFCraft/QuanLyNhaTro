@@ -42,4 +42,14 @@ public static class ActionNames
     public const string KHACH_THUE_HO_SO_CUA_TOI = "KHACH_THUE_HO_SO_CUA_TOI";
     public const string KHACH_THUE_CAP_NHAT_LIEN_HE = "KHACH_THUE_CAP_NHAT_LIEN_HE";
     public const string KHACH_THUE_LAY_THEO_PHONG = "KHACH_THUE_LAY_THEO_PHONG";
+
+    // M3 - hop dong + qr/pin nhan phong
+    public const string HopDongTao = "HOP_DONG_TAO";
+    public const string HopDongGiaHan = "HOP_DONG_GIA_HAN";
+    public const string HopDongChamDut = "HOP_DONG_CHAM_DUT";
+    public const string HopDongLayTatCa = "HOP_DONG_LAY_TAT_CA";
+    public const string HopDongSinhQr = "HOP_DONG_SINH_QR";
+    public const string PhuLucLay = "PHU_LUC_LAY";
+    public const string PhuLucCapNhat = "PHU_LUC_CAP_NHAT";
+    public const string KhachThueNhanPhongQr = "KHACH_THUE_NHAN_PHONG_QR";
 }
