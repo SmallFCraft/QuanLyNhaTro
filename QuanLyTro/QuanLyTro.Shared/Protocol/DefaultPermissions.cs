@@ -49,6 +49,10 @@ public static class DefaultPermissions
             ActionNames.KHACH_THUE_CAP_NHAT_TAM_TRU, ActionNames.KHACH_THUE_CHUYEN_PHONG,
             ActionNames.KHACH_THUE_TRA_PHONG, ActionNames.KHACH_THUE_TIM_KIEM,
             ActionNames.KHACH_THUE_LAY_THEO_PHONG,
+            // M4a: dien nuoc + hoa don khu cua minh (scope kiem tra trong service)
+            ActionNames.DIEN_NUOC_LAY_KY_TRUOC, ActionNames.DIEN_NUOC_GHI_SO,
+            ActionNames.HOA_DON_TAO, ActionNames.HOA_DON_LAY_TAT_CA,
+            ActionNames.HOA_DON_THANH_TOAN, ActionNames.DOI_SOAT_CHAY,
         };
         m[VaiTroNguoiDung.QuanLy] = ql;
 
@@ -71,6 +75,8 @@ public static class DefaultPermissions
             ActionNames.DANG_NHAP, ActionNames.DANG_XUAT, ActionNames.DOI_MAT_KHAU,
             ActionNames.KHACH_THUE_HO_SO_CUA_TOI, ActionNames.KHACH_THUE_CAP_NHAT_LIEN_HE,
             ActionNames.KHACH_THUE_LAY_THEO_PHONG,
+            // M4a: khach thue chi xem hoa don phong cua minh
+            ActionNames.HOA_DON_CUA_TOI,
         };
 
         // CongAn: chi doc phong/phu luc tra cuu (M5 se cong luu tru chi doc).

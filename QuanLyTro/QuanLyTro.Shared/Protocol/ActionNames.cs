@@ -42,4 +42,13 @@ public static class ActionNames
     public const string KHACH_THUE_HO_SO_CUA_TOI = "KHACH_THUE_HO_SO_CUA_TOI";
     public const string KHACH_THUE_CAP_NHAT_LIEN_HE = "KHACH_THUE_CAP_NHAT_LIEN_HE";
     public const string KHACH_THUE_LAY_THEO_PHONG = "KHACH_THUE_LAY_THEO_PHONG";
+
+    // M4a - dien nuoc / hoa don / doi soat
+    public const string DIEN_NUOC_LAY_KY_TRUOC = "DIEN_NUOC_LAY_KY_TRUOC";
+    public const string DIEN_NUOC_GHI_SO = "DIEN_NUOC_GHI_SO";
+    public const string HOA_DON_TAO = "HOA_DON_TAO";
+    public const string HOA_DON_LAY_TAT_CA = "HOA_DON_LAY_TAT_CA";
+    public const string HOA_DON_THANH_TOAN = "HOA_DON_THANH_TOAN";
+    public const string HOA_DON_CUA_TOI = "HOA_DON_CUA_TOI";
+    public const string DOI_SOAT_CHAY = "DOI_SOAT_CHAY";
 }
