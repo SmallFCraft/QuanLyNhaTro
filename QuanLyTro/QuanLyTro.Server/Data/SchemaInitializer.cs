@@ -114,6 +114,47 @@ public sealed class SchemaInitializer
     ngay_cap_nhat DATETIME NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
 
+        // M4a: chỉ số điện nước theo (phòng, kỳ cước yyyy-MM), UPSERT trên UNIQUE KEY
+        await _db.ExecuteAsync(@"CREATE TABLE IF NOT EXISTS chi_so_dien_nuoc (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    phong_id INT NOT NULL,
+    ky_cuoc CHAR(7) NOT NULL,
+    dien_cu INT NOT NULL,
+    dien_moi INT NOT NULL,
+    nuoc_cu INT NOT NULL,
+    nuoc_moi INT NOT NULL,
+    gia_dien BIGINT NOT NULL,
+    gia_nuoc BIGINT NOT NULL,
+    hinh_thuc_nuoc ENUM('Khoi','Nguoi','DauNguoi') NOT NULL DEFAULT 'Khoi',
+    so_nguoi_nuoc INT NULL,
+    ghi_chu VARCHAR(300) NULL,
+    ngay_ghi DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY UK_csdn_phong_ky (phong_id, ky_cuoc),
+    CONSTRAINT FK_csdn_phong FOREIGN KEY (phong_id) REFERENCES phong(id),
+    CONSTRAINT CK_csdn_dien CHECK (dien_moi >= dien_cu),
+    CONSTRAINT CK_csdn_nuoc CHECK (nuoc_moi >= nuoc_cu)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
+        // M4a: hóa đơn theo (phòng, kỳ), tiền VND nguyên (BIGINT đồng)
+        await _db.ExecuteAsync(@"CREATE TABLE IF NOT EXISTS hoa_don (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    phong_id INT NOT NULL,
+    ky_cuoc CHAR(7) NOT NULL,
+    tien_phong BIGINT NOT NULL,
+    tien_dien BIGINT NOT NULL,
+    tien_nuoc BIGINT NOT NULL,
+    phi_khac BIGINT NOT NULL DEFAULT 0,
+    tong_tien BIGINT NOT NULL,
+    trang_thai ENUM('ChuaThu','DaThu') NOT NULL DEFAULT 'ChuaThu',
+    ngay_dong DATETIME NULL,
+    nguoi_thu_id INT NULL,
+    ghi_chu VARCHAR(300) NULL,
+    UNIQUE KEY UK_hd_phong_ky (phong_id, ky_cuoc),
+    CONSTRAINT FK_hd_phong FOREIGN KEY (phong_id) REFERENCES phong(id),
+    CONSTRAINT FK_hd_thu FOREIGN KEY (nguoi_thu_id) REFERENCES tai_khoan(id),
+    CONSTRAINT CK_hd_tong CHECK (tong_tien >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
         // FK tai_khoan.khu_tro_id -> khu_tro tạo sau khu_tro để thứ tự CREATE ổn định
         await _db.ExecuteAsync(@"SET @fk_exists = (SELECT COUNT(*) FROM information_schema.statistics
     WHERE table_schema = DATABASE() AND table_name = 'tai_khoan' AND index_name = 'FK_tk_khu');
