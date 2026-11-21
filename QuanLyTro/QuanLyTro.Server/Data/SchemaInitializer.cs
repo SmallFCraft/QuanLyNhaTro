@@ -114,6 +114,56 @@ public sealed class SchemaInitializer
     ngay_cap_nhat DATETIME NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
 
+        // M3: hợp đồng thuê phòng
+        await _db.ExecuteAsync(@"CREATE TABLE IF NOT EXISTS hop_dong (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    phong_id INT NOT NULL,
+    nguoi_dai_dien_id INT NOT NULL,
+    ngay_bat_dau DATE NOT NULL,
+    ngay_ket_thuc DATE NOT NULL,
+    gia_thue DECIMAL(12,2) NOT NULL,
+    tien_coc DECIMAL(12,2) NOT NULL DEFAULT 0,
+    trang_thai VARCHAR(20) NOT NULL DEFAULT 'ChoNhanPhong',
+    ghi_chu VARCHAR(500) NULL,
+    ngay_tao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX IX_hop_dong_phong (phong_id),
+    INDEX IX_hop_dong_trangthai (trang_thai),
+    CONSTRAINT FK_hd_phong FOREIGN KEY (phong_id) REFERENCES phong(id),
+    CONSTRAINT FK_hd_tk FOREIGN KEY (nguoi_dai_dien_id) REFERENCES tai_khoan(id),
+    CONSTRAINT CK_hd_trangthai CHECK (trang_thai IN ('ChoNhanPhong','HieuLuc','HetHan','ChamDut')),
+    CONSTRAINT CK_hd_ngay CHECK (ngay_ket_thuc > ngay_bat_dau)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
+        // M3: mã nhận phòng QR/PIN dùng một lần (BR-19)
+        // "chỉ 1 mã chưa dùng mỗi hợp đồng" đảm bảo ở service (vô hiệu mã cũ trước khi sinh mã mới);
+        // lần quét kép bị chặn bởi FOR UPDATE + UPDATE da_su_dung trong transaction.
+        await _db.ExecuteAsync(@"CREATE TABLE IF NOT EXISTS ma_nhan_phong (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    hop_dong_id INT NOT NULL,
+    pin VARCHAR(8) NOT NULL,
+    qr_data VARCHAR(255) NOT NULL,
+    het_han DATE NOT NULL,
+    da_su_dung TINYINT(1) NOT NULL DEFAULT 0,
+    ngay_tao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY UK_mnp_qrdata (qr_data),
+    INDEX IX_mnp_hopdong (hop_dong_id),
+    CONSTRAINT FK_mnp_hd FOREIGN KEY (hop_dong_id) REFERENCES hop_dong(id),
+    CONSTRAINT CK_mnp_pin CHECK (pin REGEXP '^[0-9]{8}$')
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
+        // M3: phụ lục hợp đồng (gia hạn / sửa giá / thêm người / trả phòng sớm)
+        await _db.ExecuteAsync(@"CREATE TABLE IF NOT EXISTS phu_luc_hop_dong (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    hop_dong_id INT NOT NULL,
+    loai VARCHAR(20) NOT NULL,
+    noi_dung VARCHAR(1000) NOT NULL,
+    ngay_ap_dung DATE NULL,
+    trang_thai VARCHAR(10) NOT NULL DEFAULT 'Nhap',
+    CONSTRAINT FK_plhd_hd FOREIGN KEY (hop_dong_id) REFERENCES hop_dong(id),
+    CONSTRAINT CK_plhd_loai CHECK (loai IN ('GiaHan','SuaGia','ThemNguoi','TraPhongSom')),
+    CONSTRAINT CK_plhd_trangthai CHECK (trang_thai IN ('Nhap','HieuLuc'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
         // FK tai_khoan.khu_tro_id -> khu_tro tạo sau khu_tro để thứ tự CREATE ổn định
         await _db.ExecuteAsync(@"SET @fk_exists = (SELECT COUNT(*) FROM information_schema.statistics
     WHERE table_schema = DATABASE() AND table_name = 'tai_khoan' AND index_name = 'FK_tk_khu');

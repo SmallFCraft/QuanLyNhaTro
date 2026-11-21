@@ -49,6 +49,10 @@ public static class DefaultPermissions
             ActionNames.KHACH_THUE_CAP_NHAT_TAM_TRU, ActionNames.KHACH_THUE_CHUYEN_PHONG,
             ActionNames.KHACH_THUE_TRA_PHONG, ActionNames.KHACH_THUE_TIM_KIEM,
             ActionNames.KHACH_THUE_LAY_THEO_PHONG,
+            // M3: hop dong trong khu duoc gan
+            ActionNames.HopDongTao, ActionNames.HopDongGiaHan, ActionNames.HopDongChamDut,
+            ActionNames.HopDongLayTatCa, ActionNames.HopDongSinhQr,
+            ActionNames.PhuLucLay, ActionNames.PhuLucCapNhat,
         };
         m[VaiTroNguoiDung.QuanLy] = ql;
 
@@ -71,6 +75,8 @@ public static class DefaultPermissions
             ActionNames.DANG_NHAP, ActionNames.DANG_XUAT, ActionNames.DOI_MAT_KHAU,
             ActionNames.KHACH_THUE_HO_SO_CUA_TOI, ActionNames.KHACH_THUE_CAP_NHAT_LIEN_HE,
             ActionNames.KHACH_THUE_LAY_THEO_PHONG,
+            // M3: nhan phong bang QR/PIN (BR-19) — duy nhat action hop dong cua KhachThue
+            ActionNames.KhachThueNhanPhongQr,
         };
 
         // CongAn: chi doc phong/phu luc tra cuu (M5 se cong luu tru chi doc).

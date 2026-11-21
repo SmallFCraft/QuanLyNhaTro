@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hợp đồng — Quản lý nhà trọ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/tokens.css?v=2" />
+  <link rel="stylesheet" href="css/base.css?v=2" />
+</head>
+<body>
+  <!-- Trang view hợp đồng dùng chung (M3): nạp danh sách qua HOP_DONG_LAY_TAT_CA,
+       lập mới qua HOP_DONG_TAO. Shell chính (chutro/index.html tab-hop_dong) vẫn là giao diện chính. -->
+  <section class="screen-view active">
+    <div class="app-shell" style="padding:24px">
+      <h1 class="page-title">Hợp đồng thuê phòng</h1>
+      <div class="toolbar" style="margin:12px 0">
+        <button type="button" class="btn btn-primary btn-sm" id="btnTaoHopDong">Lập hợp đồng</button>
+        <button type="button" class="btn btn-outline btn-sm" id="btnNapLai">Nạp lại</button>
+      </div>
+      <div class="tblwrap">
+        <table class="tbl">
+          <thead>
+            <tr><th>Phòng</th><th>Đại diện</th><th>Bắt đầu</th><th>Kết thúc</th><th class="num">Giá thuê</th><th class="num">Cọc</th><th>Trạng thái</th></tr>
+          </thead>
+          <tbody id="hopdong-body">
+            <tr><td colspan="7" style="text-align:center;color:var(--muted)">Đang nạp…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <script src="js/bridge.js?v=2"></script>
+  <script src="js/chrome.js?v=2"></script>
+  <script src="js/ui.js?v=2"></script>
+  <script>
+    const TRANG_THAI = {
+      ChoNhanPhong: ['Chờ nhận phòng', 'warn'],
+      HieuLuc: ['Đang hiệu lực', 'rent'],
+      HetHan: ['Hết hạn', 'bad'],
+      ChamDut: ['Đã thanh lý', 'bad'],
+    };
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmtMoney = n => Number(n || 0).toLocaleString('vi-VN');
+    const fmtDate = d => (d || '').slice(0, 10).split('-').reverse().join('/');
+
+    async function napDanhSach() {
+      const body = document.getElementById('hopdong-body');
+      try {
+        const rows = await window.bridge.call('HOP_DONG_LAY_TAT_CA', {}) || [];
+        body.innerHTML = rows.map(c => {
+          const [label, tag] = TRANG_THAI[c.trangThai] || [c.trangThai, 'warn'];
+          return `<tr>
+            <td><b>${esc(c.soPhong)}</b></td>
+            <td>${esc(c.tenNguoiDaiDien)}</td>
+            <td class="mono">${esc(fmtDate(c.ngayBatDau))}</td>
+            <td class="mono">${esc(fmtDate(c.ngayKetThuc))}</td>
+            <td class="num">${esc(fmtMoney(c.giaThue))}</td>
+            <td class="num">${esc(fmtMoney(c.tienCoc))}</td>
+            <td><span class="tag ${tag}">${esc(label)}</span></td>
+          </tr>`;
+        }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted)">Không có hợp đồng nào</td></tr>';
+      } catch (err) {
+        body.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted)">${esc(err.message)}</td></tr>`;
+      }
+    }
+
+    document.getElementById('btnNapLai').addEventListener('click', napDanhSach);
+    document.getElementById('btnTaoHopDong').addEventListener('click', () =>
+      alert('Lập hợp đồng từ tab "Hợp đồng" trong shell Chủ trọ / Quản lý.'));
+    napDanhSach();
+  </script>
+</body>
+</html>
