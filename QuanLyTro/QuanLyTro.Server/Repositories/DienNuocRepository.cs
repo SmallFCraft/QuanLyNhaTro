@@ -12,6 +12,11 @@ public sealed class DienNuocRepository
 
     public Database Db => _db;
 
+    /// <summary>Số hóa đơn đã lập của (phòng, kỳ) — chặn sửa chỉ số kỳ đã đóng (BR-11).</summary>
+    public Task<int> DemHoaDonByKyAsync(int phongId, string kyCuoc) => _db.ScalarT<int>(
+        "SELECT COUNT(*) FROM hoa_don WHERE phong_id = @p AND ky_cuoc = @ky",
+        new { p = phongId, ky = kyCuoc });
+
     /// <summary>UPSERT chỉ số kỳ hiện tại (UNIQUE KEY phong_id + ky_cuoc).</summary>
     public async Task UpsertAsync(int phongId, string kyCuoc, int dienCu, int dienMoi,
         long giaDien, int nuocCu, int nuocMoi, long giaNuoc, string hinhThucNuoc, int? soNguoiNuoc)

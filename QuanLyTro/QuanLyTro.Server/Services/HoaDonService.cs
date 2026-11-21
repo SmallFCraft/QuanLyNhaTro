@@ -50,15 +50,24 @@ public sealed class HoaDonService
         var phiKhac = GetOptionalLong(data, "phiKhac") ?? 0;
         if (phiKhac < 0) throw new ValidationException("Phí khác không được âm.");
 
-        var tienPhong = await TienPhongAsync(phongId, phong);
+        var tienPhong = await TienPhongAsync(phongId, phong, kyCuoc);
         var tienDien = (dienMoi - dienCu) * giaDien;
         var tienNuoc = hinhThucNuoc == "Khoi"
             ? (nuocMoi - nuocCu) * giaNuoc
             : soNguoiNuoc * giaNuoc; // Nguoi/DauNguoi: đầu người × giá
         var tongTien = tienPhong + tienDien + tienNuoc + phiKhac;
 
-        var id = await _repo.InsertAsync(phongId, kyCuoc, tienPhong, tienDien, tienNuoc,
-            phiKhac, tongTien, null);
+        int id;
+        try
+        {
+            id = await _repo.InsertAsync(phongId, kyCuoc, tienPhong, tienDien, tienNuoc,
+                phiKhac, tongTien, null);
+        }
+        catch (MySqlConnector.MySqlException ex) when (ex.Number == 1062)
+        {
+            // UK_hd_phong_ky — race 2 request cùng (phòng, kỳ): UK chặn dữ liệu sai, báo thân thiện
+            throw new BusinessRuleException("Phòng này đã có hóa đơn cho kỳ cước trên.");
+        }
         return new
         {
             hoaDonId = id, phongId, kyCuoc, tienPhong, tienDien, tienNuoc, phiKhac, tongTien,
@@ -67,13 +76,23 @@ public sealed class HoaDonService
     }
 
     /// <summary>
-    /// Tiền phòng: hợp đồng HieuLuc của phòng (M3) nếu có, fallback gia_thue phong.
-    /// TODO(M3-merge): khi hợp đồng merge, ưu tiên hop_dong.gia_thue cho kỳ cước nằm trong hạn.
+    /// Tiền phòng: ưu tiên gia_thue của hợp đồng chưa chấm dứt (ChoNhanPhong/HieuLuc) có kỳ cước
+    /// nằm trong hạn; không có hợp đồng thì fallback gia_thue danh mục của phòng.
     /// </summary>
-    private async Task<long> TienPhongAsync(int phongId, Dictionary<string, object?> phong)
+    private async Task<long> TienPhongAsync(int phongId, Dictionary<string, object?> phong, string kyCuoc)
     {
+        var dauKy = $"{kyCuoc}-01"; // 'yyyy-MM-01' — so sánh DATE với DATE, không so DATE với 'yyyy-MM'
+        var hd = await _repo.Db.QueryAsync(
+            @"SELECT gia_thue FROM hop_dong
+              WHERE phong_id = @p AND trang_thai IN ('ChoNhanPhong','HieuLuc')
+                AND ngay_bat_dau < @dauKy + INTERVAL 1 MONTH AND ngay_ket_thuc >= @dauKy
+              ORDER BY id DESC LIMIT 1",
+            new { p = phongId, dauKy });
+        var row = hd.SingleOrDefault();
+        if (row is not null && row["gia_thue"] is not null and not DBNull)
+            return Convert.ToInt64(row["gia_thue"]);
         var giaThue = phong["gia_thue"] is null or DBNull ? 0L : Convert.ToInt64(phong["gia_thue"]);
-        return await Task.FromResult(giaThue);
+        return giaThue;
     }
 
     public async Task<object> LayTatCaAsync(SessionInfo session, JsonElement data)

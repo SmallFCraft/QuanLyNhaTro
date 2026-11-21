@@ -16,6 +16,11 @@ public sealed class HopDongService
     private readonly HopDongRepository _repo;
     private readonly RoomRepository _rooms;
     private readonly TenantRepository _tenants;
+    private static readonly object _nhanPhongLock = new();
+    // ponytail: lockout nhận phòng in-memory theo taiKhoanId; Redis/kỷ lục bền khi cần cluster
+    private static readonly Dictionary<int, (int Count, DateTimeOffset LockUntil)> _nhanPhongFails = new();
+    private const int MaxNhanPhongFails = 5;
+    private static readonly TimeSpan NhanPhongLockDuration = TimeSpan.FromMinutes(1);
 
     public HopDongService(HopDongRepository repo, RoomRepository rooms, TenantRepository tenants)
     {
@@ -53,6 +58,9 @@ public sealed class HopDongService
         // phòng phải đang trống mới lập được hợp đồng
         if ((string)phong["trang_thai"]! != "Trong")
             throw new BusinessRuleException("Phòng không còn trống, không thể lập hợp đồng mới.");
+        // chỉ 1 hợp đồng chưa chấm dứt mỗi phòng (phòng vẫn Trong khi hợp đồng chờ nhận phòng)
+        if (await _repo.CoHopDongChuaKetThucAsync(phongId))
+            throw new BusinessRuleException("Phòng đang có hợp đồng chưa kết thúc, không thể lập hợp đồng mới.");
 
         // HOP_DONG_TAO luôn đi kèm mã QR/PIN (BR-19) — hợp đồng bắt đầu ở trạng thái chờ nhận phòng
         var hetHanMa = DateOnly.FromDateTime(DateTime.Today).AddDays(7);
@@ -68,12 +76,13 @@ public sealed class HopDongService
         var tt = (string)hopDong["trang_thai"]!;
         if (tt != "ChoNhanPhong")
             throw new BusinessRuleException("Hợp đồng không còn ở trạng thái chờ nhận phòng, không sinh lại mã được.");
-        // mã cũ chưa dùng bị vô hiệu, sinh mã mới thay thế
-        await _repo.VoHieuMaAsync(Convert.ToInt32(hopDong["id"]));
+        // mã cũ chưa dùng bị vô hiệu, sinh mã mới thay thế — nguyên tử trong 1 transaction
+        var hdId = Convert.ToInt32(hopDong["id"]);
         var pin = SinhPinMoi();
-        var qrData = $"QLT|{Convert.ToInt32(hopDong["id"])}|{pin}";
-        await _repo.ThemMaAsync(Convert.ToInt32(hopDong["id"]), pin, qrData);
-        return new { hopDongId = Convert.ToInt32(hopDong["id"]), maPin = pin, qrDataString = qrData };
+        var qrData = $"QLT|{hdId}|{pin}";
+        var hetHanMa = DateOnly.FromDateTime(DateTime.Today).AddDays(7);
+        await _repo.VoHieuVaThemMaAsync(hdId, pin, qrData, hetHanMa);
+        return new { hopDongId = hdId, maPin = pin, qrDataString = qrData };
     }
 
     public async Task<object> NhanPhongQrAsync(SessionInfo session, JsonElement data)
@@ -85,8 +94,31 @@ public sealed class HopDongService
         if (tokenOrPin.Length == 0 || tokenOrPin.Length > 255)
             throw new ValidationException("Mã nhận phòng không hợp lệ.");
 
-        var info = await _repo.NhanPhongAsync(tokenOrPin, session.TaiKhoanId)
-            ?? throw new BusinessRuleException("Mã nhận phòng sai, đã hết hạn hoặc đã được sử dụng.");
+        // lockout đoán mã: 5 sai liên tiếp trong 1 phút → khóa 1 phút (pattern AuthenticationService)
+        lock (_nhanPhongLock)
+        {
+            var now = DateTimeOffset.UtcNow;
+            if (_nhanPhongFails.TryGetValue(session.TaiKhoanId, out var f) && f.LockUntil > now)
+                throw new BusinessRuleException("Nhập mã sai quá nhiều lần, thử lại sau 1 phút.");
+        }
+
+        var info = await _repo.NhanPhongAsync(tokenOrPin, session.TaiKhoanId);
+        if (info is null)
+        {
+            lock (_nhanPhongLock)
+            {
+                var now = DateTimeOffset.UtcNow;
+                // đếm tiếp chuỗi sai đang chạy (chưa bị khóa); sau 5 lần sai liên tiếp khóa 1 phút
+                var count = _nhanPhongFails.TryGetValue(session.TaiKhoanId, out var prev) && prev.LockUntil <= now
+                    ? prev.Count + 1
+                    : 1;
+                _nhanPhongFails[session.TaiKhoanId] = count >= MaxNhanPhongFails
+                    ? (count, now.Add(NhanPhongLockDuration))
+                    : (count, DateTimeOffset.MinValue);
+            }
+            throw new BusinessRuleException("Mã nhận phòng sai, đã hết hạn hoặc đã được sử dụng.");
+        }
+        lock (_nhanPhongLock) { _nhanPhongFails.Remove(session.TaiKhoanId); }
         return new
         {
             hopDongId = Convert.ToInt32(info["hop_dong_id"]),
@@ -127,7 +159,12 @@ public sealed class HopDongService
     public async Task<object> GetAllAsync(SessionInfo session, JsonElement data)
     {
         // QuanLy chỉ thấy hợp đồng phòng trong khu của mình — scope từ session, không từ payload
-        var khu = session.VaiTro == VaiTroNguoiDung.QuanLy ? session.KhuTroId : null;
+        int? khu = null;
+        if (session.VaiTro == VaiTroNguoiDung.QuanLy)
+        {
+            if (session.KhuTroId is null) throw new NotFoundOrDeniedException();
+            khu = session.KhuTroId;
+        }
         var rows = await _repo.GetAllAsync(khu);
         return rows.Select(r => new
         {
@@ -150,20 +187,54 @@ public sealed class HopDongService
         var hopDong = await LayTheoQuyenAsync(session, AccountService.GetInt(data, "hopDongId"));
         var hopDongId = Convert.ToInt32(hopDong["id"]);
         var phuLucs = await _repo.PhuLucByHopDongAsync(hopDongId);
+        var rows = phuLucs.Select(r => (
+            id: Convert.ToInt32(r["id"]),
+            loai: (string)r["loai"]!,
+            noiDung: (string)r["noi_dung"]!,
+            ngayApDung: r["ngay_ap_dung"] is null or DBNull ? null : Convert.ToDateTime(r["ngay_ap_dung"]).ToString("yyyy-MM-dd"),
+            trangThai: (string)r["trang_thai"]!
+        )).ToArray();
+
+        // client hop_dong.js đọc nguoiOCung (mảng {hoTen,cccd,...}) — parse từ phụ lục ThemNguoi
+        var nguoiOCung = rows
+            .Where(r => r.loai == "ThemNguoi" && r.trangThai == "HieuLuc")
+            .Select(r => ParseNguoiOChung(r))
+            .OfType<object>()
+            .ToArray();
+
         return new
         {
             hopDongId,
             soPhong = (string)hopDong["so_phong"]!,
             tenNguoiDaiDien = (string)hopDong["ten_nguoi_dai_dien"]!,
             cccdNguoiDaiDien = hopDong["cccd"] is string c ? c : null,
-            dsPhuLuc = phuLucs.Select(r => new
+            dsPhuLuc = rows.Select(r => (object)new
             {
-                id = Convert.ToInt32(r["id"]),
-                loai = (string)r["loai"]!,
-                noiDung = (string)r["noi_dung"]!,
-                ngayApDung = r["ngay_ap_dung"] is null or DBNull ? null : Convert.ToDateTime(r["ngay_ap_dung"]).ToString("yyyy-MM-dd"),
-                trangThai = (string)r["trang_thai"]!,
+                id = r.id, loai = r.loai, noiDung = r.noiDung,
+                ngayApDung = r.ngayApDung, trangThai = r.trangThai,
             }).ToArray(),
+            nguoiOCung,
+        };
+    }
+
+    private static object? ParseNguoiOChung(object row)
+    {
+        // anonymous type của rows — đọc qua kiểu tuple tường minh để tránh dynamic
+        var (id, loai, noiDung, ngayApDung, trangThai) = ((int, string, string, string, string))row;
+        // format do PhuLucCapNhatAsync ghi: "Them nguoi o chung: HoTen | CCCD: xx | NS: yyyy-MM-dd | QQ: x | NLV: x | SDT: x"
+        var parts = noiDung.Split('|').Select(p => p.Trim()).ToArray();
+        if (parts.Length < 6 || !parts[0].StartsWith("Them nguoi o chung: "))
+            return null;
+        string Val(string prefix) => parts.Skip(1).Select(p => p.StartsWith(prefix) ? p[prefix.Length..].Trim() : null).FirstOrDefault(p => p is not null && p != "-") ?? "";
+        var hoTen = parts[0]["Them nguoi o chung: ".Length..].Trim();
+        return new
+        {
+            hoTen,
+            cccd = Val("CCCD: "),
+            ngaySinh = Val("NS: "),
+            queQuan = Val("QQ: "),
+            noiLamViec = Val("NLV: "),
+            soDienThoai = Val("SDT: "),
         };
     }
 

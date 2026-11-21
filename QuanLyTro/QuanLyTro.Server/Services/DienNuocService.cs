@@ -77,6 +77,12 @@ public sealed class DienNuocService
             throw new ValidationException("Chỉ số nước mới phải lớn hơn hoặc bằng chỉ số cũ (BR-07).");
         if (hinhThucNuoc != "Khoi" && (soNguoiNuoc is null || soNguoiNuoc <= 0))
             throw new ValidationException("Nước theo đầu người cần số người > 0.");
+        if (giaDien < 0 || giaNuoc < 0)
+            throw new ValidationException("Giá điện/nước không được âm.");
+
+        // hóa đơn đã lập là bất biến (BR-11) — chỉ số gốc của kỳ đã lập hóa đơn không được sửa
+        if (await _repo.DemHoaDonByKyAsync(phongId, kyCuoc) > 0)
+            throw new BusinessRuleException("Kỳ này đã có hóa đơn — không thể sửa chỉ số (hóa đơn là bất biến).");
 
         await _repo.UpsertAsync(phongId, kyCuoc, dienCu, dienMoi, giaDien, nuocCu, nuocMoi,
             giaNuoc, hinhThucNuoc, soNguoiNuoc);

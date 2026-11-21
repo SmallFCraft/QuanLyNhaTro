@@ -370,4 +370,93 @@ public class HopDongTests
         Assert.IsFalse((await Call(ActionNames.HopDongTao, s.Token, new { })).Success);
         Assert.IsFalse((await Call(ActionNames.KhachThueNhanPhongQr, s.Token, new { tokenOrPin = "12345678" })).Success);
     }
+
+    // --- bổ sung theo review post-merge ---
+
+    [TestMethod]
+    public async Task TaoHopDong_PhongCoHopDongChuaKetThuc_BiChan()
+    {
+        await TaoHopDongChoPhongTrongAsync();
+        // phòng vẫn Trong (chưa ai nhận) nhưng đã có hợp đồng chờ — lập lần 2 phải bị chặn
+        var resp = await Call(ActionNames.HopDongTao, _chuTroToken, new
+        {
+            phongId = _phongTrongId, nguoiDaiDienId = _khachId,
+            ngayBatDau = "2027-01-01", ngayKetThuc = "2028-01-01", giaThue = 2500000,
+        });
+        Assert.IsFalse(resp.Success);
+        StringAssert.Contains(resp.Message, "chưa kết thúc");
+    }
+
+    [TestMethod]
+    public async Task QuanLy_ChuaGanKhu_KhongThayHopDongMoikhu()
+    {
+        var (id, _) = await TaoHopDongChoPhongTrongAsync();
+        await _db.ExecuteAsync(
+            "INSERT INTO tai_khoan (ten_dang_nhap, mat_khau_hash, ho_ten, vai_tro, khu_tro_id) VALUES ('qlnull', @h, 'QL Chua Gan', 'QuanLy', NULL)",
+            new { h = PasswordHasher.Hash("mk123456") });
+        var s = await _auth.LoginAsync("qlnull", "mk123456");
+        var resp = await Call(ActionNames.HopDongLayTatCa, s.Token, new { });
+        Assert.IsFalse(resp.Success, "QuanLy chưa gán khu phải bị từ chối, không được thấy hợp đồng mọi khu");
+    }
+
+    [TestMethod]
+    public async Task NhanPhong_KhongPhaiChuHopDong_BiChan()
+    {
+        var (_, pin) = await TaoHopDongChoPhongTrongAsync();
+        // khách khác (không phải người đại diện) nắm được PIN cũng không nhận được phòng
+        await DangKyKhachAsync("012345678909");
+        var tokenKhac = await DangNhapKhachAsync("012345678909");
+        var resp = await Call(ActionNames.KhachThueNhanPhongQr, tokenKhac, new { tokenOrPin = pin });
+        Assert.IsFalse(resp.Success, "Người không phải chủ hợp đồng không được nhận phòng bằng mã của người khác");
+        // phòng vẫn Trong, hợp đồng vẫn chờ
+        Assert.AreEqual("Trong", await _db.ScalarT<string>("SELECT trang_thai FROM phong WHERE id = @p", new { p = _phongTrongId }));
+    }
+
+    [TestMethod]
+    public async Task ChamDut_XoaPhongKhoiHoSo_GhiLichSuTraPhong()
+    {
+        var (id, pin) = await TaoHopDongChoPhongTrongAsync();
+        var token = await DangNhapKhachAsync("012345678901");
+        await Call(ActionNames.KhachThueNhanPhongQr, token, new { tokenOrPin = pin });
+        Assert.AreEqual(_phongTrongId, await _db.ScalarT<int?>("SELECT phong_id FROM ho_so_khach_thue WHERE tai_khoan_id = @t", new { t = _khachId }));
+
+        await Call(ActionNames.HopDongChamDut, _chuTroToken, new { hopDongId = id, ghiChu = "Tra phong" });
+
+        Assert.IsNull(await _db.ScalarT<int?>("SELECT phong_id FROM ho_so_khach_thue WHERE tai_khoan_id = @t", new { t = _khachId }));
+        Assert.AreEqual(1, await _db.ScalarT<int>(
+            "SELECT COUNT(*) FROM lich_su_cu_tru WHERE tai_khoan_khach_id = @t AND loai_bien_dong = 'TraPhong'", new { t = _khachId }));
+    }
+
+    [TestMethod]
+    public async Task NhanPhong_Sai5Lan_BiKhoa1Phut()
+    {
+        var (id, pin) = await TaoHopDongChoPhongTrongAsync();
+        var token = await DangNhapKhachAsync("012345678901");
+        for (var i = 0; i < 5; i++)
+        {
+            var sai = await Call(ActionNames.KhachThueNhanPhongQr, token, new { tokenOrPin = "00000000" });
+            Assert.IsFalse(sai.Success);
+        }
+        // đến mã ĐÚNG cũng bị khóa
+        var dung = await Call(ActionNames.KhachThueNhanPhongQr, token, new { tokenOrPin = pin });
+        Assert.IsFalse(dung.Success);
+        StringAssert.Contains(dung.Message, "quá nhiều lần");
+    }
+
+    [TestMethod]
+    public async Task PhuLucLay_TraNguoiOCung_KhopClient()
+    {
+        var (id, _) = await TaoHopDongChoPhongTrongAsync();
+        await Call(ActionNames.PhuLucCapNhat, _chuTroToken, new
+        {
+            hopDongId = id,
+            nguoiOCung = new object[] { new { hoTen = "NOC A", cccd = "012345678904", ngaySinh = "1999-05-10", queQuan = "Da Nang", noiLamViec = "UEA", soDienThoai = "0909876543" } },
+        });
+        var lay = await Call(ActionNames.PhuLucLay, _chuTroToken, new { hopDongId = id });
+        Assert.IsTrue(lay.Success, lay.Message);
+        var json = Raw(lay);
+        StringAssert.Contains(json, "nguoiOCung");
+        StringAssert.Contains(json, "NOC A");
+        StringAssert.Contains(json, "012345678904");
+    }
 }
