@@ -53,6 +53,10 @@ public static class DefaultPermissions
             ActionNames.HopDongTao, ActionNames.HopDongGiaHan, ActionNames.HopDongChamDut,
             ActionNames.HopDongLayTatCa, ActionNames.HopDongSinhQr,
             ActionNames.PhuLucLay, ActionNames.PhuLucCapNhat,
+            // M4a: dien nuoc + hoa don khu cua minh (scope kiem tra trong service)
+            ActionNames.DIEN_NUOC_LAY_KY_TRUOC, ActionNames.DIEN_NUOC_GHI_SO,
+            ActionNames.HOA_DON_TAO, ActionNames.HOA_DON_LAY_TAT_CA,
+            ActionNames.HOA_DON_THANH_TOAN, ActionNames.DOI_SOAT_CHAY,
         };
         m[VaiTroNguoiDung.QuanLy] = ql;
 
@@ -77,6 +81,8 @@ public static class DefaultPermissions
             ActionNames.KHACH_THUE_LAY_THEO_PHONG,
             // M3: nhan phong bang QR/PIN (BR-19) — duy nhat action hop dong cua KhachThue
             ActionNames.KhachThueNhanPhongQr,
+            // M4a: khach thue chi xem hoa don phong cua minh
+            ActionNames.HOA_DON_CUA_TOI,
         };
 
         // CongAn: chi doc phong/phu luc tra cuu (M5 se cong luu tru chi doc).

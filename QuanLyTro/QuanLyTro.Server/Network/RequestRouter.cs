@@ -19,6 +19,8 @@ public sealed class RequestRouter
     private readonly RoomService _rooms;
     private readonly TenantService _tenants;
     private readonly HopDongService _hopDongs;
+    private readonly DienNuocService _dienNuoc;
+    private readonly HoaDonService _hoaDon;
 
     private static readonly HashSet<string> PublicActions = new(StringComparer.Ordinal)
     { ActionNames.DANG_NHAP, ActionNames.KHACH_THUE_DANG_KY };
@@ -38,6 +40,10 @@ public sealed class RequestRouter
         _rooms = new RoomService(roomRepo, siteRepo);
         _tenants = new TenantService(tenantRepo, roomRepo, siteRepo);
         _hopDongs = new HopDongService(new Repositories.HopDongRepository(db), roomRepo, tenantRepo);
+        var dienNuocRepo = new Repositories.DienNuocRepository(db);
+        var hoaDonRepo = new Repositories.HoaDonRepository(db);
+        _dienNuoc = new DienNuocService(dienNuocRepo, roomRepo);
+        _hoaDon = new HoaDonService(hoaDonRepo, dienNuocRepo, roomRepo);
     }
 
     public async Task<ResponsePacket> HandleAsync(RequestPacket packet, ClientContext ctx)
@@ -117,6 +123,14 @@ public sealed class RequestRouter
                 ActionNames.KHACH_THUE_HO_SO_CUA_TOI => await _tenants.GetMyProfileAsync(session!),
                 ActionNames.KHACH_THUE_CAP_NHAT_LIEN_HE => await _tenants.UpdateLienHeAsync(session!, packet.Data),
                 ActionNames.KHACH_THUE_LAY_THEO_PHONG => await _tenants.GetByPhongAsync(session!, packet.Data),
+                // M4a: điện nước + hóa đơn + đối soát
+                ActionNames.DIEN_NUOC_LAY_KY_TRUOC => await _dienNuoc.LayKyTruocAsync(session!, packet.Data),
+                ActionNames.DIEN_NUOC_GHI_SO => await _dienNuoc.GhiSoAsync(session!, packet.Data),
+                ActionNames.HOA_DON_TAO => await _hoaDon.TaoAsync(session!, packet.Data),
+                ActionNames.HOA_DON_LAY_TAT_CA => await _hoaDon.LayTatCaAsync(session!, packet.Data),
+                ActionNames.HOA_DON_THANH_TOAN => await _hoaDon.ThanhToanAsync(session!, packet.Data),
+                ActionNames.HOA_DON_CUA_TOI => await _hoaDon.CuaToiAsync(session!, packet.Data),
+                ActionNames.DOI_SOAT_CHAY => await _hoaDon.DoiSoatAsync(session!, packet.Data),
                 _ => throw new NotFoundOrDeniedException(),
             };
             return ResponsePacket.Ok(packet.RequestId, data);
