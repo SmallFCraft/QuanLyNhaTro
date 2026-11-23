@@ -49,22 +49,27 @@ public static class DefaultPermissions
             ActionNames.KHACH_THUE_CAP_NHAT_TAM_TRU, ActionNames.KHACH_THUE_CHUYEN_PHONG,
             ActionNames.KHACH_THUE_TRA_PHONG, ActionNames.KHACH_THUE_TIM_KIEM,
             ActionNames.KHACH_THUE_LAY_THEO_PHONG,
-            // M5: lich kiem tra trong khu duoc gan
-            ActionNames.LichKiemTraLay, ActionNames.LichKiemTraDuyet, ActionNames.LichKiemTraTuChoi,
-            ActionNames.LichKiemTraNhanVien, ActionNames.LichKiemTraGanNv,
+            // M3: hop dong trong khu duoc gan
+            ActionNames.HopDongTao, ActionNames.HopDongGiaHan, ActionNames.HopDongChamDut,
+            ActionNames.HopDongLayTatCa, ActionNames.HopDongSinhQr,
+            ActionNames.PhuLucLay, ActionNames.PhuLucCapNhat,
+            // M4a: dien nuoc + hoa don khu cua minh (scope kiem tra trong service)
+            ActionNames.DIEN_NUOC_LAY_KY_TRUOC, ActionNames.DIEN_NUOC_GHI_SO,
+            ActionNames.HOA_DON_TAO, ActionNames.HOA_DON_LAY_TAT_CA,
+            ActionNames.HOA_DON_THANH_TOAN, ActionNames.DOI_SOAT_CHAY,
+            ActionNames.LichKiemTraLay, ActionNames.LichKiemTraDuyet, ActionNames.LichKiemTraTuChoi, ActionNames.LichKiemTraNhanVien, ActionNames.LichKiemTraGanNv,
         };
         m[VaiTroNguoiDung.QuanLy] = ql;
 
-        // LeTan: dang nhap + doi mat khau + tra cuu phong chi doc + dieu phoi lich kiem tra (M5).
+        // LeTan: dang nhap + doi mat khau + tra cuu phong chi doc (phuc vu tu van M5).
         m[VaiTroNguoiDung.LeTan] = new HashSet<string>(StringComparer.Ordinal)
         {
             ActionNames.DANG_NHAP, ActionNames.DANG_XUAT, ActionNames.DOI_MAT_KHAU,
             ActionNames.PHONG_LAY_TAT_CA, ActionNames.PHONG_LAY_CHI_TIET,
-            ActionNames.LichKiemTraLay, ActionNames.LichKiemTraDuyet, ActionNames.LichKiemTraTuChoi,
-            ActionNames.LichKiemTraNhanVien, ActionNames.LichKiemTraGanNv,
+            ActionNames.LichKiemTraLay, ActionNames.LichKiemTraDuyet, ActionNames.LichKiemTraTuChoi, ActionNames.LichKiemTraNhanVien, ActionNames.LichKiemTraGanNv,
         };
 
-        // NhanVien: hanh dong ca nhan + nhan va hoan thanh lich kiem tra duoc gan (M5).
+        // NhanVien: hanh dong ca nhan. (M5 se cong action lam viec.)
         m[VaiTroNguoiDung.NhanVien] = new HashSet<string>(StringComparer.Ordinal)
         {
             ActionNames.DANG_NHAP, ActionNames.DANG_XUAT, ActionNames.DOI_MAT_KHAU,
@@ -77,9 +82,13 @@ public static class DefaultPermissions
             ActionNames.DANG_NHAP, ActionNames.DANG_XUAT, ActionNames.DOI_MAT_KHAU,
             ActionNames.KHACH_THUE_HO_SO_CUA_TOI, ActionNames.KHACH_THUE_CAP_NHAT_LIEN_HE,
             ActionNames.KHACH_THUE_LAY_THEO_PHONG,
+            // M3: nhan phong bang QR/PIN (BR-19) — duy nhat action hop dong cua KhachThue
+            ActionNames.KhachThueNhanPhongQr,
+            // M4a: khach thue chi xem hoa don phong cua minh
+            ActionNames.HOA_DON_CUA_TOI,
         };
 
-        // CongAn: chi doc phong/phu luc tra cuu + luu tru chi doc (M5).
+        // CongAn: chi doc phong/phu luc tra cuu (M5 se cong luu tru chi doc).
         m[VaiTroNguoiDung.CongAn] = new HashSet<string>(StringComparer.Ordinal)
         {
             ActionNames.DANG_NHAP, ActionNames.DANG_XUAT, ActionNames.DOI_MAT_KHAU,

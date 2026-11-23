@@ -43,6 +43,24 @@ public static class ActionNames
     public const string KHACH_THUE_CAP_NHAT_LIEN_HE = "KHACH_THUE_CAP_NHAT_LIEN_HE";
     public const string KHACH_THUE_LAY_THEO_PHONG = "KHACH_THUE_LAY_THEO_PHONG";
 
+    // M3 - hop dong + qr/pin nhan phong
+    public const string HopDongTao = "HOP_DONG_TAO";
+    public const string HopDongGiaHan = "HOP_DONG_GIA_HAN";
+    public const string HopDongChamDut = "HOP_DONG_CHAM_DUT";
+    public const string HopDongLayTatCa = "HOP_DONG_LAY_TAT_CA";
+    public const string HopDongSinhQr = "HOP_DONG_SINH_QR";
+    public const string PhuLucLay = "PHU_LUC_LAY";
+    public const string PhuLucCapNhat = "PHU_LUC_CAP_NHAT";
+    public const string KhachThueNhanPhongQr = "KHACH_THUE_NHAN_PHONG_QR";
+
+    // M4a - dien nuoc / hoa don / doi soat
+    public const string DIEN_NUOC_LAY_KY_TRUOC = "DIEN_NUOC_LAY_KY_TRUOC";
+    public const string DIEN_NUOC_GHI_SO = "DIEN_NUOC_GHI_SO";
+    public const string HOA_DON_TAO = "HOA_DON_TAO";
+    public const string HOA_DON_LAY_TAT_CA = "HOA_DON_LAY_TAT_CA";
+    public const string HOA_DON_THANH_TOAN = "HOA_DON_THANH_TOAN";
+    public const string HOA_DON_CUA_TOI = "HOA_DON_CUA_TOI";
+    public const string DOI_SOAT_CHAY = "DOI_SOAT_CHAY";
     // M5 - dat lich public / lich kiem tra / luu tru cong an
     public const string PhongLayTrongPublic = "PHONG_LAY_TRONG_PUBLIC";
     public const string KhachThueDatLich = "KHACH_THUE_DAT_LICH";

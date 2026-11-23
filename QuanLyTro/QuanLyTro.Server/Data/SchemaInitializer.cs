@@ -114,6 +114,97 @@ public sealed class SchemaInitializer
     ngay_cap_nhat DATETIME NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
 
+        // M3: hợp đồng thuê phòng
+        await _db.ExecuteAsync(@"CREATE TABLE IF NOT EXISTS hop_dong (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    phong_id INT NOT NULL,
+    nguoi_dai_dien_id INT NOT NULL,
+    ngay_bat_dau DATE NOT NULL,
+    ngay_ket_thuc DATE NOT NULL,
+    gia_thue DECIMAL(12,2) NOT NULL,
+    tien_coc DECIMAL(12,2) NOT NULL DEFAULT 0,
+    trang_thai VARCHAR(20) NOT NULL DEFAULT 'ChoNhanPhong',
+    ghi_chu VARCHAR(500) NULL,
+    ngay_tao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX IX_hop_dong_phong (phong_id),
+    INDEX IX_hop_dong_trangthai (trang_thai),
+    CONSTRAINT FK_hd_phong FOREIGN KEY (phong_id) REFERENCES phong(id),
+    CONSTRAINT FK_hd_tk FOREIGN KEY (nguoi_dai_dien_id) REFERENCES tai_khoan(id),
+    CONSTRAINT CK_hd_trangthai CHECK (trang_thai IN ('ChoNhanPhong','HieuLuc','HetHan','ChamDut')),
+    CONSTRAINT CK_hd_ngay CHECK (ngay_ket_thuc > ngay_bat_dau)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
+        // M3: mã nhận phòng QR/PIN dùng một lần (BR-19)
+        // "chỉ 1 mã chưa dùng mỗi hợp đồng" đảm bảo ở service (vô hiệu mã cũ trước khi sinh mã mới);
+        // lần quét kép bị chặn bởi FOR UPDATE + UPDATE da_su_dung trong transaction.
+        await _db.ExecuteAsync(@"CREATE TABLE IF NOT EXISTS ma_nhan_phong (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    hop_dong_id INT NOT NULL,
+    pin VARCHAR(8) NOT NULL,
+    qr_data VARCHAR(255) NOT NULL,
+    het_han DATE NOT NULL,
+    da_su_dung TINYINT(1) NOT NULL DEFAULT 0,
+    ngay_tao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY UK_mnp_qrdata (qr_data),
+    INDEX IX_mnp_hopdong (hop_dong_id),
+    CONSTRAINT FK_mnp_hd FOREIGN KEY (hop_dong_id) REFERENCES hop_dong(id),
+    CONSTRAINT CK_mnp_pin CHECK (pin REGEXP '^[0-9]{8}$')
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
+        // M3: phụ lục hợp đồng (gia hạn / sửa giá / thêm người / trả phòng sớm)
+        await _db.ExecuteAsync(@"CREATE TABLE IF NOT EXISTS phu_luc_hop_dong (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    hop_dong_id INT NOT NULL,
+    loai VARCHAR(20) NOT NULL,
+    noi_dung VARCHAR(1000) NOT NULL,
+    ngay_ap_dung DATE NULL,
+    trang_thai VARCHAR(10) NOT NULL DEFAULT 'Nhap',
+    CONSTRAINT FK_plhd_hd FOREIGN KEY (hop_dong_id) REFERENCES hop_dong(id),
+    CONSTRAINT CK_plhd_loai CHECK (loai IN ('GiaHan','SuaGia','ThemNguoi','TraPhongSom')),
+    CONSTRAINT CK_plhd_trangthai CHECK (trang_thai IN ('Nhap','HieuLuc'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
+        // M4a: chỉ số điện nước theo (phòng, kỳ cước yyyy-MM), UPSERT trên UNIQUE KEY
+        await _db.ExecuteAsync(@"CREATE TABLE IF NOT EXISTS chi_so_dien_nuoc (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    phong_id INT NOT NULL,
+    ky_cuoc CHAR(7) NOT NULL,
+    dien_cu INT NOT NULL,
+    dien_moi INT NOT NULL,
+    nuoc_cu INT NOT NULL,
+    nuoc_moi INT NOT NULL,
+    gia_dien BIGINT NOT NULL,
+    gia_nuoc BIGINT NOT NULL,
+    hinh_thuc_nuoc ENUM('Khoi','Nguoi','DauNguoi') NOT NULL DEFAULT 'Khoi',
+    so_nguoi_nuoc INT NULL,
+    ghi_chu VARCHAR(300) NULL,
+    ngay_ghi DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY UK_csdn_phong_ky (phong_id, ky_cuoc),
+    CONSTRAINT FK_csdn_phong FOREIGN KEY (phong_id) REFERENCES phong(id),
+    CONSTRAINT CK_csdn_dien CHECK (dien_moi >= dien_cu),
+    CONSTRAINT CK_csdn_nuoc CHECK (nuoc_moi >= nuoc_cu)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
+        // M4a: hóa đơn theo (phòng, kỳ), tiền VND nguyên (BIGINT đồng)
+        await _db.ExecuteAsync(@"CREATE TABLE IF NOT EXISTS hoa_don (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    phong_id INT NOT NULL,
+    ky_cuoc CHAR(7) NOT NULL,
+    tien_phong BIGINT NOT NULL,
+    tien_dien BIGINT NOT NULL,
+    tien_nuoc BIGINT NOT NULL,
+    phi_khac BIGINT NOT NULL DEFAULT 0,
+    tong_tien BIGINT NOT NULL,
+    trang_thai ENUM('ChuaThu','DaThu') NOT NULL DEFAULT 'ChuaThu',
+    ngay_dong DATETIME NULL,
+    nguoi_thu_id INT NULL,
+    ghi_chu VARCHAR(300) NULL,
+    UNIQUE KEY UK_hd_phong_ky (phong_id, ky_cuoc),
+    CONSTRAINT FK_hoadon_phong FOREIGN KEY (phong_id) REFERENCES phong(id),
+    CONSTRAINT FK_hoadon_thu FOREIGN KEY (nguoi_thu_id) REFERENCES tai_khoan(id),
+    CONSTRAINT CK_hd_tong CHECK (tong_tien >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
         await _db.ExecuteAsync(@"CREATE TABLE IF NOT EXISTS dat_lich_xem_phong (
     id INT AUTO_INCREMENT PRIMARY KEY,
     phong_id INT NOT NULL,

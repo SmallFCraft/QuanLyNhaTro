@@ -21,14 +21,12 @@ public sealed class RequestRouter
     private readonly DatLichService _datLich;
     private readonly LichKiemTraService _lichKiemTra;
     private readonly LuuTruService _luuTru;
+    private readonly HopDongService _hopDongs;
+    private readonly DienNuocService _dienNuoc;
+    private readonly HoaDonService _hoaDon;
 
     private static readonly HashSet<string> PublicActions = new(StringComparer.Ordinal)
-    {
-        ActionNames.DANG_NHAP,
-        ActionNames.KHACH_THUE_DANG_KY,
-        ActionNames.PhongLayTrongPublic,
-        ActionNames.KhachThueDatLich,
-    };
+    { ActionNames.DANG_NHAP, ActionNames.KHACH_THUE_DANG_KY, ActionNames.PhongLayTrongPublic, ActionNames.KhachThueDatLich };
 
     public RequestRouter(Database db, SessionStore sessions,
         Repositories.SiteRepository? siteRepo = null,
@@ -47,6 +45,11 @@ public sealed class RequestRouter
         _datLich = new DatLichService(new Repositories.DatLichRepository(db), roomRepo);
         _lichKiemTra = new LichKiemTraService(new Repositories.LichKiemTraRepository(db));
         _luuTru = new LuuTruService(db);
+        _hopDongs = new HopDongService(new Repositories.HopDongRepository(db), roomRepo, tenantRepo);
+        var dienNuocRepo = new Repositories.DienNuocRepository(db);
+        var hoaDonRepo = new Repositories.HoaDonRepository(db);
+        _dienNuoc = new DienNuocService(dienNuocRepo, roomRepo);
+        _hoaDon = new HoaDonService(hoaDonRepo, dienNuocRepo, roomRepo);
     }
 
     public async Task<ResponsePacket> HandleAsync(RequestPacket packet, ClientContext ctx)
@@ -111,11 +114,29 @@ public sealed class RequestRouter
                 ActionNames.KHACH_THUE_CAP_NHAT_TAM_TRU => await _tenants.UpdateTamTruAsync(session!, packet.Data),
                 ActionNames.KHACH_THUE_CHUYEN_PHONG => await _tenants.MoveRoomAsync(session!, packet.Data),
                 ActionNames.KHACH_THUE_TRA_PHONG => await _tenants.CheckOutAsync(session!, packet.Data),
+
+                // M3: hop dong + qr/pin nhan phong
+                ActionNames.HopDongTao => await _hopDongs.CreateAsync(session!, packet.Data),
+                ActionNames.HopDongGiaHan => await _hopDongs.GiaHanAsync(session!, packet.Data),
+                ActionNames.HopDongChamDut => await _hopDongs.ChamDutAsync(session!, packet.Data),
+                ActionNames.HopDongLayTatCa => await _hopDongs.GetAllAsync(session!, packet.Data),
+                ActionNames.HopDongSinhQr => await _hopDongs.SinhQrAsync(session!, packet.Data),
+                ActionNames.PhuLucLay => await _hopDongs.PhuLucLayAsync(session!, packet.Data),
+                ActionNames.PhuLucCapNhat => await _hopDongs.PhuLucCapNhatAsync(session!, packet.Data),
+                ActionNames.KhachThueNhanPhongQr => await _hopDongs.NhanPhongQrAsync(session!, packet.Data),
                 ActionNames.KHACH_THUE_XOA => await _tenants.DeleteAsync(session!, packet.Data),
                 ActionNames.KHACH_THUE_TIM_KIEM => await _tenants.SearchAsync(session!, packet.Data),
                 ActionNames.KHACH_THUE_HO_SO_CUA_TOI => await _tenants.GetMyProfileAsync(session!),
                 ActionNames.KHACH_THUE_CAP_NHAT_LIEN_HE => await _tenants.UpdateLienHeAsync(session!, packet.Data),
                 ActionNames.KHACH_THUE_LAY_THEO_PHONG => await _tenants.GetByPhongAsync(session!, packet.Data),
+                // M4a: điện nước + hóa đơn + đối soát
+                ActionNames.DIEN_NUOC_LAY_KY_TRUOC => await _dienNuoc.LayKyTruocAsync(session!, packet.Data),
+                ActionNames.DIEN_NUOC_GHI_SO => await _dienNuoc.GhiSoAsync(session!, packet.Data),
+                ActionNames.HOA_DON_TAO => await _hoaDon.TaoAsync(session!, packet.Data),
+                ActionNames.HOA_DON_LAY_TAT_CA => await _hoaDon.LayTatCaAsync(session!, packet.Data),
+                ActionNames.HOA_DON_THANH_TOAN => await _hoaDon.ThanhToanAsync(session!, packet.Data),
+                ActionNames.HOA_DON_CUA_TOI => await _hoaDon.CuaToiAsync(session!, packet.Data),
+                ActionNames.DOI_SOAT_CHAY => await _hoaDon.DoiSoatAsync(session!, packet.Data),
                 // M5: đặt lịch public + lịch kiểm tra + lưu trú công an
                 ActionNames.PhongLayTrongPublic => await _datLich.GetVacantRoomsPublicAsync(),
                 ActionNames.KhachThueDatLich => await _datLich.BookPublicAsync(packet.Data),
