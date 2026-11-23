@@ -42,4 +42,18 @@ public static class ActionNames
     public const string KHACH_THUE_HO_SO_CUA_TOI = "KHACH_THUE_HO_SO_CUA_TOI";
     public const string KHACH_THUE_CAP_NHAT_LIEN_HE = "KHACH_THUE_CAP_NHAT_LIEN_HE";
     public const string KHACH_THUE_LAY_THEO_PHONG = "KHACH_THUE_LAY_THEO_PHONG";
+
+    // M5 - dat lich public / lich kiem tra / luu tru cong an
+    public const string PhongLayTrongPublic = "PHONG_LAY_TRONG_PUBLIC";
+    public const string KhachThueDatLich = "KHACH_THUE_DAT_LICH";
+    public const string LichKiemTraLay = "LICH_KIEM_TRA_LAY";
+    public const string LichKiemTraDuyet = "LICH_KIEM_TRA_DUYET";
+    public const string LichKiemTraTuChoi = "LICH_KIEM_TRA_TU_CHOI";
+    public const string LichKiemTraNhanVien = "LICH_KIEM_TRA_NHAN_VIEN";
+    public const string LichKiemTraGanNv = "LICH_KIEM_TRA_GAN_NV";
+    public const string LichKiemTraCuaToi = "LICH_KIEM_TRA_CUA_TOI";
+    public const string LichKiemTraNhanViec = "LICH_KIEM_TRA_NHAN_VIEC";
+    public const string LichKiemTraHoanThanh = "LICH_KIEM_TRA_HOAN_THANH";
+    public const string XuatHoSoTamTru = "XUAT_HO_SO_TAM_TRU";
+    public const string LichSuCuTruLay = "LICH_SU_CU_TRU_LAY";
 }
