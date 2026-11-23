@@ -205,6 +205,37 @@ public sealed class SchemaInitializer
     CONSTRAINT CK_hd_tong CHECK (tong_tien >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
 
+        await _db.ExecuteAsync(@"CREATE TABLE IF NOT EXISTS dat_lich_xem_phong (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    phong_id INT NOT NULL,
+    ho_ten VARCHAR(100) NOT NULL,
+    so_dien_thoai VARCHAR(15) NOT NULL,
+    thoi_gian DATETIME NOT NULL,
+    trang_thai ENUM('ChoDuyet','DaDuyet','TuChoi') NOT NULL DEFAULT 'ChoDuyet',
+    tao_luc DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_dl_dt (thoi_gian),
+    UNIQUE KEY uk_dl (phong_id, thoi_gian, so_dien_thoai),
+    CONSTRAINT FK_dl_phong FOREIGN KEY (phong_id) REFERENCES phong(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
+        await _db.ExecuteAsync(@"CREATE TABLE IF NOT EXISTS lich_kiem_tra (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    phong_id INT NOT NULL,
+    dat_lich_id INT NULL,
+    ho_ten VARCHAR(100) NULL,
+    so_dien_thoai VARCHAR(15) NULL,
+    thoi_gian DATETIME NOT NULL,
+    trang_thai ENUM('ChoDuyet','DaDuyet','TuChoi','DangLam','HoanThanh') NOT NULL DEFAULT 'ChoDuyet',
+    nhan_vien_id INT NULL,
+    ket_qua VARCHAR(1000) NULL,
+    ly_do_tu_choi VARCHAR(500) NULL,
+    INDEX idx_lkt_tt (trang_thai),
+    INDEX idx_lkt_nv (nhan_vien_id),
+    CONSTRAINT FK_lkt_phong FOREIGN KEY (phong_id) REFERENCES phong(id) ON DELETE CASCADE,
+    CONSTRAINT FK_lkt_dl FOREIGN KEY (dat_lich_id) REFERENCES dat_lich_xem_phong(id) ON DELETE SET NULL,
+    CONSTRAINT FK_lkt_nv FOREIGN KEY (nhan_vien_id) REFERENCES tai_khoan(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
         // FK tai_khoan.khu_tro_id -> khu_tro tạo sau khu_tro để thứ tự CREATE ổn định
         await _db.ExecuteAsync(@"SET @fk_exists = (SELECT COUNT(*) FROM information_schema.statistics
     WHERE table_schema = DATABASE() AND table_name = 'tai_khoan' AND index_name = 'FK_tk_khu');

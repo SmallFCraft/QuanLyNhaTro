@@ -61,5 +61,161 @@
   </div>
   <div class="toast-stack" id="toastStack" aria-live="polite"></div>
   <script src="shared/js/bridge.js?v=2"></script>
+  <script>
+    (function () {
+      const fallbackVacantRooms = [
+        { phongId: 103, soPhong: "103", tenKhu: "Khu A", giaThue: 2500000 },
+        { phongId: 106, soPhong: "106", tenKhu: "Khu A", giaThue: 2300000 },
+        { phongId: 202, soPhong: "202", tenKhu: "Khu B", giaThue: 2700000 },
+        { phongId: 205, soPhong: "205", tenKhu: "Khu B", giaThue: 2500000 }
+      ];
+
+      let vacantRooms = [];
+
+      function esc(s) {
+        return String(s ?? "").replace(/[&<>"']/g, function (c) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+        });
+      }
+
+      function formatVnd(n) {
+        const v = Number(n);
+        return (Number.isFinite(v) ? v.toLocaleString("vi-VN") : "0") + " đ";
+      }
+
+      function showToast(msg) {
+        const stack = document.getElementById("toastStack");
+        if (!stack) return;
+        const el = document.createElement("div");
+        el.className = "toast";
+        el.textContent = msg;
+        stack.appendChild(el);
+        setTimeout(function () { el.remove(); }, 3200);
+      }
+
+      function setDefaultBookingTime() {
+        const inp = document.getElementById("bookThoiGian");
+        if (!inp) return;
+        const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        tomorrow.setHours(9, 30, 0, 0);
+        const pad = function (n) { return String(n).padStart(2, "0"); };
+        inp.value = tomorrow.getFullYear() + "-" +
+          pad(tomorrow.getMonth() + 1) + "-" +
+          pad(tomorrow.getDate()) + "T" +
+          pad(tomorrow.getHours()) + ":" +
+          pad(tomorrow.getMinutes());
+      }
+
+      function renderVacantRooms(rooms) {
+        vacantRooms = Array.isArray(rooms) ? rooms : [];
+        const grid = document.getElementById("publicVacantGrid");
+        const sel = document.getElementById("bookPhong");
+
+        if (grid) {
+          if (vacantRooms.length === 0) {
+            grid.innerHTML = '<div class="card" style="grid-column:1/-1;text-align:center;color:var(--text-muted);">Hiện chưa có phòng trống.</div>';
+          } else {
+            grid.innerHTML = vacantRooms.map(function (r) {
+              const pid = r.phongId ?? r.id ?? r.soPhong;
+              return '<div class="vacant-card">' +
+                '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+                  '<span class="vacant-room-num">Phòng ' + esc(r.soPhong) + '</span>' +
+                  '<span class="pill pill-green">Trống</span>' +
+                '</div>' +
+                '<div class="helper-text">' + esc(r.tenKhu) + '</div>' +
+                '<div class="mono font-bold text-navy" style="font-size:16px;">' + esc(formatVnd(r.giaThue)) + '/tháng</div>' +
+                '<button type="button" class="btn btn-primary btn-sm" data-pick-room="' + esc(pid) + '">Đặt lịch xem</button>' +
+              '</div>';
+            }).join("");
+          }
+        }
+
+        if (sel && vacantRooms.length > 0) {
+          sel.innerHTML = vacantRooms.map(function (r) {
+            const pid = r.phongId ?? r.id ?? r.soPhong;
+            return '<option value="' + esc(pid) + '">Phòng ' + esc(r.soPhong) + ' — ' + esc(r.tenKhu) + ' (' + esc(formatVnd(r.giaThue)) + '/tháng)</option>';
+          }).join("");
+        }
+      }
+
+      async function loadVacantRooms() {
+        try {
+          const res = await window.QuanLyTroBridge.invoke("PHONG_LAY_TRONG_PUBLIC", {});
+          const data = res && res.data;
+          if (Array.isArray(data)) {
+            renderVacantRooms(data);
+          } else {
+            renderVacantRooms(fallbackVacantRooms);
+          }
+        } catch (err) {
+          renderVacantRooms([]);
+          showToast(err.message || "Không tải được danh sách phòng trống.");
+        }
+      }
+
+      document.getElementById("publicVacantGrid")?.addEventListener("click", function (e) {
+        const btn = e.target.closest("[data-pick-room]");
+        if (!btn) return;
+        const sel = document.getElementById("bookPhong");
+        if (sel) sel.value = btn.dataset.pickRoom;
+        document.getElementById("bookHoTen")?.focus();
+      });
+
+      document.querySelector('[data-goto="s01"]')?.addEventListener("click", function () {
+        window.location.href = "auth/index.html";
+      });
+
+      document.getElementById("closeModalBtn")?.addEventListener("click", function () {
+        document.getElementById("appModal")?.classList.remove("open");
+      });
+
+      document.getElementById("publicBookingForm")?.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const hoTen = (document.getElementById("bookHoTen")?.value || "").trim();
+        const soDienThoai = (document.getElementById("bookSdt")?.value || "").trim();
+        const phongId = Number(document.getElementById("bookPhong")?.value);
+        const thoiGian = (document.getElementById("bookThoiGian")?.value || "").trim();
+        const fb = document.getElementById("bookingFeedback");
+
+        if (!hoTen || !soDienThoai || !phongId || !thoiGian) {
+          if (fb) {
+            fb.style.color = "var(--red-text)";
+            fb.textContent = "Vui lòng nhập đầy đủ họ tên, số điện thoại, phòng và thời gian.";
+          }
+          return;
+        }
+
+        try {
+          const res = await window.QuanLyTroBridge.invoke("KHACH_THUE_DAT_LICH", {
+            phongId: phongId,
+            hoTen: hoTen,
+            soDienThoai: soDienThoai,
+            thoiGian: thoiGian
+          });
+          if (res && res.success === false) {
+            throw new Error(res.message || "Không thể đặt lịch xem phòng.");
+          }
+          const picked = vacantRooms.find(function (r) { return Number(r.phongId ?? r.id) === phongId; });
+          const labelPhong = picked ? picked.soPhong : String(phongId);
+          if (fb) {
+            fb.style.color = "var(--green-text)";
+            fb.textContent = "Đã gửi yêu cầu xem Phòng " + labelPhong + " (Chờ duyệt).";
+          }
+          showToast("Đặt lịch xem phòng thành công!");
+        } catch (err) {
+          if (fb) {
+            fb.style.color = "var(--red-text)";
+            fb.textContent = err.message || "Đặt lịch thất bại.";
+          }
+          showToast(err.message || "Đặt lịch thất bại.");
+        }
+      });
+
+      document.addEventListener("DOMContentLoaded", function () {
+        setDefaultBookingTime();
+        loadVacantRooms();
+      });
+    })();
+  </script>
 </body>
 </html>

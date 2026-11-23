@@ -57,6 +57,7 @@ public static class DefaultPermissions
             ActionNames.DIEN_NUOC_LAY_KY_TRUOC, ActionNames.DIEN_NUOC_GHI_SO,
             ActionNames.HOA_DON_TAO, ActionNames.HOA_DON_LAY_TAT_CA,
             ActionNames.HOA_DON_THANH_TOAN, ActionNames.DOI_SOAT_CHAY,
+            ActionNames.LichKiemTraLay, ActionNames.LichKiemTraDuyet, ActionNames.LichKiemTraTuChoi, ActionNames.LichKiemTraNhanVien, ActionNames.LichKiemTraGanNv,
         };
         m[VaiTroNguoiDung.QuanLy] = ql;
 
@@ -65,12 +66,14 @@ public static class DefaultPermissions
         {
             ActionNames.DANG_NHAP, ActionNames.DANG_XUAT, ActionNames.DOI_MAT_KHAU,
             ActionNames.PHONG_LAY_TAT_CA, ActionNames.PHONG_LAY_CHI_TIET,
+            ActionNames.LichKiemTraLay, ActionNames.LichKiemTraDuyet, ActionNames.LichKiemTraTuChoi, ActionNames.LichKiemTraNhanVien, ActionNames.LichKiemTraGanNv,
         };
 
         // NhanVien: hanh dong ca nhan. (M5 se cong action lam viec.)
         m[VaiTroNguoiDung.NhanVien] = new HashSet<string>(StringComparer.Ordinal)
         {
             ActionNames.DANG_NHAP, ActionNames.DANG_XUAT, ActionNames.DOI_MAT_KHAU,
+            ActionNames.LichKiemTraCuaToi, ActionNames.LichKiemTraNhanViec, ActionNames.LichKiemTraHoanThanh,
         };
 
         // KhachThue: ho so + nghiep vu cua chinh minh.
@@ -90,6 +93,7 @@ public static class DefaultPermissions
         {
             ActionNames.DANG_NHAP, ActionNames.DANG_XUAT, ActionNames.DOI_MAT_KHAU,
             ActionNames.PHONG_LAY_TAT_CA, ActionNames.PHONG_LAY_CHI_TIET,
+            ActionNames.XuatHoSoTamTru, ActionNames.LichSuCuTruLay,
         };
 
         return m;

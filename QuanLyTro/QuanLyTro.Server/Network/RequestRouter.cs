@@ -18,12 +18,15 @@ public sealed class RequestRouter
     private readonly SiteService _sites;
     private readonly RoomService _rooms;
     private readonly TenantService _tenants;
+    private readonly DatLichService _datLich;
+    private readonly LichKiemTraService _lichKiemTra;
+    private readonly LuuTruService _luuTru;
     private readonly HopDongService _hopDongs;
     private readonly DienNuocService _dienNuoc;
     private readonly HoaDonService _hoaDon;
 
     private static readonly HashSet<string> PublicActions = new(StringComparer.Ordinal)
-    { ActionNames.DANG_NHAP, ActionNames.KHACH_THUE_DANG_KY };
+    { ActionNames.DANG_NHAP, ActionNames.KHACH_THUE_DANG_KY, ActionNames.PhongLayTrongPublic, ActionNames.KhachThueDatLich };
 
     public RequestRouter(Database db, SessionStore sessions,
         Repositories.SiteRepository? siteRepo = null,
@@ -39,6 +42,9 @@ public sealed class RequestRouter
         _sites = new SiteService(siteRepo, roomRepo, sessions);
         _rooms = new RoomService(roomRepo, siteRepo);
         _tenants = new TenantService(tenantRepo, roomRepo, siteRepo);
+        _datLich = new DatLichService(new Repositories.DatLichRepository(db), roomRepo);
+        _lichKiemTra = new LichKiemTraService(new Repositories.LichKiemTraRepository(db));
+        _luuTru = new LuuTruService(db);
         _hopDongs = new HopDongService(new Repositories.HopDongRepository(db), roomRepo, tenantRepo);
         var dienNuocRepo = new Repositories.DienNuocRepository(db);
         var hoaDonRepo = new Repositories.HoaDonRepository(db);
@@ -131,6 +137,19 @@ public sealed class RequestRouter
                 ActionNames.HOA_DON_THANH_TOAN => await _hoaDon.ThanhToanAsync(session!, packet.Data),
                 ActionNames.HOA_DON_CUA_TOI => await _hoaDon.CuaToiAsync(session!, packet.Data),
                 ActionNames.DOI_SOAT_CHAY => await _hoaDon.DoiSoatAsync(session!, packet.Data),
+                // M5: đặt lịch public + lịch kiểm tra + lưu trú công an
+                ActionNames.PhongLayTrongPublic => await _datLich.GetVacantRoomsPublicAsync(),
+                ActionNames.KhachThueDatLich => await _datLich.BookPublicAsync(packet.Data),
+                ActionNames.LichKiemTraLay => await _lichKiemTra.ListAsync(session!),
+                ActionNames.LichKiemTraDuyet => await _lichKiemTra.ApproveAsync(session!, packet.Data),
+                ActionNames.LichKiemTraTuChoi => await _lichKiemTra.RejectAsync(session!, packet.Data),
+                ActionNames.LichKiemTraNhanVien => await _lichKiemTra.ListEmployeesAsync(session!),
+                ActionNames.LichKiemTraGanNv => await _lichKiemTra.AssignEmployeeAsync(session!, packet.Data),
+                ActionNames.LichKiemTraCuaToi => await _lichKiemTra.ListMineAsync(session!),
+                ActionNames.LichKiemTraNhanViec => await _lichKiemTra.AcceptTaskAsync(session!, packet.Data),
+                ActionNames.LichKiemTraHoanThanh => await _lichKiemTra.CompleteTaskAsync(session!, packet.Data),
+                ActionNames.XuatHoSoTamTru => await _luuTru.XuatHoSoTamTruAsync(session!, packet.Data),
+                ActionNames.LichSuCuTruLay => await _luuTru.LichSuCuTruLayAsync(session!, packet.Data),
                 _ => throw new NotFoundOrDeniedException(),
             };
             return ResponsePacket.Ok(packet.RequestId, data);
