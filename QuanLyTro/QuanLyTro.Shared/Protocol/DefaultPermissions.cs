@@ -49,20 +49,26 @@ public static class DefaultPermissions
             ActionNames.KHACH_THUE_CAP_NHAT_TAM_TRU, ActionNames.KHACH_THUE_CHUYEN_PHONG,
             ActionNames.KHACH_THUE_TRA_PHONG, ActionNames.KHACH_THUE_TIM_KIEM,
             ActionNames.KHACH_THUE_LAY_THEO_PHONG,
+            // M5: lich kiem tra trong khu duoc gan
+            ActionNames.LichKiemTraLay, ActionNames.LichKiemTraDuyet, ActionNames.LichKiemTraTuChoi,
+            ActionNames.LichKiemTraNhanVien, ActionNames.LichKiemTraGanNv,
         };
         m[VaiTroNguoiDung.QuanLy] = ql;
 
-        // LeTan: dang nhap + doi mat khau + tra cuu phong chi doc (phuc vu tu van M5).
+        // LeTan: dang nhap + doi mat khau + tra cuu phong chi doc + dieu phoi lich kiem tra (M5).
         m[VaiTroNguoiDung.LeTan] = new HashSet<string>(StringComparer.Ordinal)
         {
             ActionNames.DANG_NHAP, ActionNames.DANG_XUAT, ActionNames.DOI_MAT_KHAU,
             ActionNames.PHONG_LAY_TAT_CA, ActionNames.PHONG_LAY_CHI_TIET,
+            ActionNames.LichKiemTraLay, ActionNames.LichKiemTraDuyet, ActionNames.LichKiemTraTuChoi,
+            ActionNames.LichKiemTraNhanVien, ActionNames.LichKiemTraGanNv,
         };
 
-        // NhanVien: hanh dong ca nhan. (M5 se cong action lam viec.)
+        // NhanVien: hanh dong ca nhan + nhan va hoan thanh lich kiem tra duoc gan (M5).
         m[VaiTroNguoiDung.NhanVien] = new HashSet<string>(StringComparer.Ordinal)
         {
             ActionNames.DANG_NHAP, ActionNames.DANG_XUAT, ActionNames.DOI_MAT_KHAU,
+            ActionNames.LichKiemTraCuaToi, ActionNames.LichKiemTraNhanViec, ActionNames.LichKiemTraHoanThanh,
         };
 
         // KhachThue: ho so + nghiep vu cua chinh minh.
@@ -73,11 +79,12 @@ public static class DefaultPermissions
             ActionNames.KHACH_THUE_LAY_THEO_PHONG,
         };
 
-        // CongAn: chi doc phong/phu luc tra cuu (M5 se cong luu tru chi doc).
+        // CongAn: chi doc phong/phu luc tra cuu + luu tru chi doc (M5).
         m[VaiTroNguoiDung.CongAn] = new HashSet<string>(StringComparer.Ordinal)
         {
             ActionNames.DANG_NHAP, ActionNames.DANG_XUAT, ActionNames.DOI_MAT_KHAU,
             ActionNames.PHONG_LAY_TAT_CA, ActionNames.PHONG_LAY_CHI_TIET,
+            ActionNames.XuatHoSoTamTru, ActionNames.LichSuCuTruLay,
         };
 
         return m;
