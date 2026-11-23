@@ -888,7 +888,60 @@ document.addEventListener('DOMContentLoaded', () => {
   switchTenantTab(params.get('tab') === 'history' ? 'history' : 'overview');
   wireTabKeys('tenantTabs', switchTenantTab);
   wireTabKeys('checkinTabs', switchCheckinTab);
+  document.getElementById('btnTenantReportIssue')?.addEventListener('click', openTenantReportIssueModal);
   loadTenantInvoices();
   // ponytail: tự động làm mới toàn trang mỗi 30s + khi quay lại cửa sổ — thay nút sync tay.
   startAutoRefresh(loadTenantInvoices, 30000);
 });
+
+// M4b: nút "Báo sự cố" của khách thuê gọi SU_CO_TAO (server tự xác định phòng từ session).
+function openTenantReportIssueModal() {
+  if (tenantRoomId === null) {
+    if (typeof UIChrome !== 'undefined' && UIChrome.showToast) {
+      UIChrome.showToast('Bạn chưa nhận phòng nên chưa thể báo sự cố.');
+    } else if (typeof toast === 'function') {
+      toast('Bạn chưa nhận phòng nên chưa thể báo sự cố.', 'warn');
+    }
+    return;
+  }
+  const html = `
+    <div class="field">
+      <label for="kt-sc-mucDo">Mức độ ưu tiên</label>
+      <select id="kt-sc-mucDo" class="select">
+        <option value="Thap">Thấp</option>
+        <option value="TrungBinh" selected>Trung bình</option>
+        <option value="Cao">Cao</option>
+        <option value="KhanCap">Khẩn cấp</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="kt-sc-moTa">Mô tả sự cố</label>
+      <textarea id="kt-sc-moTa" class="textarea" rows="4" maxlength="1000" placeholder="VD: Vòi nước bị rò rỉ, bóng đèn hỏng..."></textarea>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
+      <button type="button" class="btn btn-secondary btn-sm" id="kt-sc-cancel">Hủy</button>
+      <button type="button" class="btn btn-primary btn-sm" id="kt-sc-submit">Gửi báo cáo</button>
+    </div>`;
+  UIChrome.openModal('Báo sự cố phòng', html);
+  document.getElementById('kt-sc-cancel')?.addEventListener('click', () => UIChrome.closeModal());
+  const submitBtn = document.getElementById('kt-sc-submit');
+  submitBtn?.addEventListener('click', async () => {
+    const mucDo = document.getElementById('kt-sc-mucDo')?.value || 'TrungBinh';
+    const moTa = (document.getElementById('kt-sc-moTa')?.value || '').trim();
+    if (!moTa) {
+      UIChrome.showToast('Vui lòng nhập mô tả sự cố.');
+      return;
+    }
+    try {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Đang gửi…';
+      await window.bridge.call('SU_CO_TAO', { mucDo, moTa });
+      UIChrome.closeModal();
+      UIChrome.showToast('Đã gửi báo cáo sự cố thành công.');
+    } catch (err) {
+      UIChrome.showToast('Lỗi: ' + err.message);
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Gửi báo cáo';
+    }
+  });
+}

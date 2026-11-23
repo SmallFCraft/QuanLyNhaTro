@@ -77,18 +77,22 @@
                 </div>
                 <div style="display:flex; flex-direction:column; gap:16px;">
                   <div class="card" id="managerIncidentsCard">
-                    <div class="card-header"><h2 class="card-title">Sự cố khu tôi</h2></div>
+                    <div class="card-header">
+                      <h2 class="card-title">Sự cố khu tôi</h2>
+                      <button type="button" class="btn btn-primary btn-sm" id="btnManagerReportIssue">+ Báo sự cố</button>
+                    </div>
                     <div id="managerIncidentsList"></div>
                   </div>
                   <div class="card" id="managerProposalsCard">
-                    <div class="card-header"><h2 class="card-title">Đề xuất của tôi</h2></div>
+                    <div class="card-header">
+                      <h2 class="card-title">Đề xuất của tôi</h2>
+                      <button type="button" class="btn btn-secondary btn-sm" id="btnManagerNewProposal">+ Gửi đề xuất</button>
+                    </div>
                     <div class="table-wrap">
                       <table class="data-table">
-                        <thead><tr><th>Loại</th><th>Đối tượng</th><th>Trạng thái</th></tr></thead>
-                        <tbody>
-                          <tr><td>Sửa giá phòng</td><td>Phòng 104</td><td><span class="pill pill-amber">ChoDuyet</span></td></tr>
-                          <tr><td>Xử lý sự cố Cao</td><td class="mono">SC-202611-0008</td><td><span class="pill pill-green">DaDuyet</span></td></tr>
-                          <tr><td>Xóa hóa đơn</td><td>Phòng 108</td><td><span class="pill pill-red">TuChoi</span></td></tr>
+                        <thead><tr><th>Loại</th><th>Nội dung</th><th>Trạng thái</th><th>Phản hồi</th></tr></thead>
+                        <tbody id="managerProposalsBody">
+                          <tr><td colspan="4" style="color:var(--text-muted);">Đang tải...</td></tr>
                         </tbody>
                       </table>
                     </div>
