@@ -270,4 +270,67 @@ public class DatLichLuuTruTests
         var resp = await Call(ActionNames.XuatHoSoTamTru, _leTanToken, new { cccd = "0482" });
         Assert.IsFalse(resp.Success, "Lễ tân không được phép gọi XUAT_HO_SO_TAM_TRU");
     }
+
+    [TestMethod]
+    public async Task QuanLyChuaGanKhu_KhongDuocXemLich()
+    {
+        var session = new SessionInfo(100, "ql", VaiTroNguoiDung.QuanLy, null, null, "ql-token");
+        await _sessions.AddAsync(session);
+        Assert.IsFalse((await Call(ActionNames.LichKiemTraLay, session.Token, new { })).Success);
+    }
+
+    [TestMethod]
+    public async Task TimLichKhongTonTai_KhongTuGhiDuLieu()
+    {
+        var id = await _db.ExecuteAsync(@"INSERT INTO dat_lich_xem_phong
+            (phong_id, ho_ten, so_dien_thoai, thoi_gian) VALUES (@p, 'Test', '0901234567', @time)",
+            new { p = _phongTrongId, time = DateTime.Now.AddDays(1) });
+        var session = new SessionInfo(101, "ql", VaiTroNguoiDung.QuanLy, _khuId + 1, null, "wrong-khu");
+        await _sessions.AddAsync(session);
+        Assert.IsFalse((await Call(ActionNames.LichKiemTraDuyet, session.Token, new { lichId = id })).Success);
+        Assert.AreEqual(0, await _db.ScalarT<int>("SELECT COUNT(*) FROM lich_kiem_tra"));
+    }
+
+    [TestMethod]
+    public async Task DatLichDongThoiKhacPhong_KhongQuaBaYeuCau()
+    {
+        var repo = new QuanLyTro.Server.Repositories.DatLichRepository(_db);
+        var rooms = new List<int> { _phongTrongId };
+        for (var i = 0; i < 3; i++)
+            rooms.Add(await _db.ExecuteAsync(@"INSERT INTO phong
+                (khu_tro_id, so_phong, gia_thue, so_nguoi_toi_da) VALUES (@k, @room, 1000000, 2)",
+                new { k = _khuId, room = "C" + i }));
+        var results = await Task.WhenAll(rooms.Select(async room =>
+        {
+            try { await repo.CreateBookingAsync(room, "Concurrent", "0909999999", DateTime.Now.AddDays(1)); return true; }
+            catch (BusinessRuleException) { return false; }
+        }));
+        Assert.AreEqual(3, results.Count(ok => ok));
+        Assert.AreEqual(3, await _db.ScalarT<int>("SELECT COUNT(*) FROM dat_lich_xem_phong"));
+    }
+
+    [TestMethod]
+    public async Task CapNhatHaiBang_LoiBuocHaiRollbackBuocMot()
+    {
+        var booking = await new QuanLyTro.Server.Repositories.DatLichRepository(_db)
+            .CreateBookingAsync(_phongTrongId, "Rollback", "0903333333", DateTime.Now.AddDays(1));
+        await _db.ExecuteAsync(@"CREATE TRIGGER fail_booking_update BEFORE UPDATE ON dat_lich_xem_phong
+            FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'test rollback'");
+        try
+        {
+            var repo = new QuanLyTro.Server.Repositories.LichKiemTraRepository(_db);
+            foreach (var update in new Func<Task<int>>[] {
+                () => repo.ApproveAsync(booking.LichKiemTraId, booking.DatLichId),
+                () => repo.RejectAsync(booking.LichKiemTraId, booking.DatLichId, "No"),
+                () => repo.AssignEmployeeAsync(booking.LichKiemTraId, booking.DatLichId, _nhanVienId) })
+            {
+                await Assert.ThrowsExceptionAsync<MySqlConnector.MySqlException>(async () => { await update(); });
+                Assert.AreEqual("ChoDuyet", await _db.ScalarT<string>(
+                    "SELECT trang_thai FROM lich_kiem_tra WHERE id = @id", new { id = booking.LichKiemTraId }));
+                Assert.IsNull(await _db.ScalarT<int?>(
+                    "SELECT nhan_vien_id FROM lich_kiem_tra WHERE id = @id", new { id = booking.LichKiemTraId }));
+            }
+        }
+        finally { await _db.ExecuteAsync("DROP TRIGGER fail_booking_update"); }
+    }
 }

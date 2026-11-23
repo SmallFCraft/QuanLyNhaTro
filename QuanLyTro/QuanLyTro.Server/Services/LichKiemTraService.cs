@@ -22,6 +22,8 @@ public sealed class LichKiemTraService
     public async Task<object> ListAsync(SessionInfo session)
     {
         RequireCoordinator(session);
+        if (session.VaiTro == VaiTroNguoiDung.QuanLy && session.KhuTroId is null)
+            throw new NotFoundOrDeniedException();
         var khuTroId = session.VaiTro == VaiTroNguoiDung.QuanLy ? session.KhuTroId : null;
         var rows = await _repo.ListAsync(khuTroId);
         return rows.Select(MapDto).ToArray();

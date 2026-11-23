@@ -34,8 +34,20 @@ public sealed class DatLichRepository
         int phongId, string hoTen, string soDienThoai, DateTime thoiGian)
     {
         var (conn, tx) = await _db.BeginAsync();
+        // MySQL named lock serializes this phone across rooms and server instances.
+        var lockName = "qlt-booking-" + Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(soDienThoai)))[..40];
+        var locked = false;
         try
         {
+            await using (var cmd = conn.CreateCommand())
+            {
+                cmd.Transaction = tx;
+                cmd.CommandText = "SELECT GET_LOCK(@name, 10)";
+                cmd.Parameters.AddWithValue("@name", lockName);
+                locked = Convert.ToInt32(await cmd.ExecuteScalarAsync()) == 1;
+                if (!locked) throw new BusinessRuleException("Đang xử lý yêu cầu cùng số điện thoại, vui lòng thử lại.");
+            }
             await using (var cmd = conn.CreateCommand())
             {
                 cmd.Transaction = tx;
@@ -105,7 +117,20 @@ public sealed class DatLichRepository
         }
         finally
         {
-            await conn.CloseAsync();
+            try
+            {
+                if (locked)
+                {
+                    await using var release = conn.CreateCommand();
+                    release.CommandText = "SELECT RELEASE_LOCK(@name)";
+                    release.Parameters.AddWithValue("@name", lockName);
+                    await release.ExecuteScalarAsync();
+                }
+            }
+            finally
+            {
+                await conn.DisposeAsync();
+            }
         }
     }
 }

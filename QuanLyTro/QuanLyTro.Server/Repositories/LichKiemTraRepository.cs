@@ -50,69 +50,50 @@ public sealed class LichKiemTraRepository
         if (rows.Count > 0)
             return rows[0];
 
-        // Trường hợp dat_lich_xem_phong được chèn trực tiếp chưa có bản ghi lich_kiem_tra
-        var dlRows = await _db.QueryAsync(
-            @"SELECT d.id, d.phong_id, d.ho_ten, d.so_dien_thoai, d.thoi_gian, d.trang_thai,
-                     p.so_phong, p.khu_tro_id
-              FROM dat_lich_xem_phong d
-              JOIN phong p ON p.id = d.phong_id
-              WHERE d.id = @id",
-            new { id });
-        if (dlRows.Count == 0)
-            return null;
+        return null;
+    }
 
-        var dl = dlRows[0];
-        var lktId = await _db.ExecuteAsync(
-            @"INSERT INTO lich_kiem_tra (phong_id, dat_lich_id, ho_ten, so_dien_thoai, thoi_gian, trang_thai)
-              VALUES (@p, @dl, @ht, @sdt, @tg, @tt)",
-            new
+    public Task<int> ApproveAsync(int lichKiemTraId, int? datLichId) =>
+        UpdateStatusAsync(lichKiemTraId, datLichId, "DaDuyet", "ChoDuyet", null, null);
+
+    public Task<int> RejectAsync(int lichKiemTraId, int? datLichId, string? lyDoTuChoi) =>
+        UpdateStatusAsync(lichKiemTraId, datLichId, "TuChoi", null, lyDoTuChoi, null);
+
+    private async Task<int> UpdateStatusAsync(int id, int? datLichId, string status,
+        string? requiredStatus, string? reason, int? employeeId)
+    {
+        var (conn, tx) = await _db.BeginAsync();
+        await using var connection = conn;
+        await using var transaction = tx;
+        try
+        {
+            await using var cmd = conn.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = @"UPDATE lich_kiem_tra
+                SET trang_thai = @status, ly_do_tu_choi = @reason,
+                    nhan_vien_id = COALESCE(@employee, nhan_vien_id)
+                WHERE id = @id AND trang_thai IN ('ChoDuyet', 'DaDuyet')
+                  AND (@required IS NULL OR trang_thai = @required)";
+            cmd.Parameters.AddWithValue("@status", status);
+            cmd.Parameters.AddWithValue("@reason", (object?)reason ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@employee", (object?)employeeId ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@required", (object?)requiredStatus ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@id", id);
+            var n = await cmd.ExecuteNonQueryAsync();
+            if (n > 0 && datLichId is not null)
             {
-                p = Convert.ToInt32(dl["phong_id"]),
-                dl = Convert.ToInt32(dl["id"]),
-                ht = dl["ho_ten"] as string,
-                sdt = dl["so_dien_thoai"] as string,
-                tg = Convert.ToDateTime(dl["thoi_gian"]!),
-                tt = (string)dl["trang_thai"]!,
-            });
-
-        return (await _db.QueryAsync(
-            @"SELECT l.id, l.phong_id, l.dat_lich_id, l.ho_ten, l.so_dien_thoai, l.thoi_gian,
-                     l.trang_thai, l.nhan_vien_id, l.ket_qua, l.ly_do_tu_choi,
-                     p.so_phong, p.khu_tro_id
-              FROM lich_kiem_tra l
-              JOIN phong p ON p.id = l.phong_id
-              WHERE l.id = @lktId",
-            new { lktId })).SingleOrDefault();
-    }
-
-    public async Task<int> ApproveAsync(int lichKiemTraId, int? datLichId)
-    {
-        var n = await _db.ExecuteAsync(
-            "UPDATE lich_kiem_tra SET trang_thai = 'DaDuyet', ly_do_tu_choi = NULL WHERE id = @id AND trang_thai = 'ChoDuyet'",
-            new { id = lichKiemTraId });
-        if (n > 0 && datLichId is not null)
-        {
-            await _db.ExecuteAsync(
-                "UPDATE dat_lich_xem_phong SET trang_thai = 'DaDuyet' WHERE id = @dl",
-                new { dl = datLichId.Value });
+                cmd.CommandText = "UPDATE dat_lich_xem_phong SET trang_thai = @status WHERE id = @dl";
+                cmd.Parameters.AddWithValue("@dl", datLichId.Value);
+                await cmd.ExecuteNonQueryAsync();
+            }
+            await tx.CommitAsync();
+            return n;
         }
-        return n;
-    }
-
-    public async Task<int> RejectAsync(int lichKiemTraId, int? datLichId, string? lyDoTuChoi)
-    {
-        var n = await _db.ExecuteAsync(
-            @"UPDATE lich_kiem_tra
-              SET trang_thai = 'TuChoi', ly_do_tu_choi = @lyDo
-              WHERE id = @id AND trang_thai IN ('ChoDuyet', 'DaDuyet')",
-            new { id = lichKiemTraId, lyDo = lyDoTuChoi });
-        if (n > 0 && datLichId is not null)
+        catch
         {
-            await _db.ExecuteAsync(
-                "UPDATE dat_lich_xem_phong SET trang_thai = 'TuChoi' WHERE id = @dl",
-                new { dl = datLichId.Value });
+            await tx.RollbackAsync();
+            throw;
         }
-        return n;
     }
 
     public Task<List<Dictionary<string, object?>>> ListEmployeesAsync() =>
@@ -129,21 +110,8 @@ public sealed class LichKiemTraRepository
               WHERE id = @id AND vai_tro = 'NhanVien' AND bi_khoa = 0",
             new { id = nhanVienId })).SingleOrDefault();
 
-    public async Task<int> AssignEmployeeAsync(int lichKiemTraId, int? datLichId, int nhanVienId)
-    {
-        var n = await _db.ExecuteAsync(
-            @"UPDATE lich_kiem_tra
-              SET nhan_vien_id = @nv, trang_thai = 'DaDuyet'
-              WHERE id = @id AND trang_thai IN ('ChoDuyet', 'DaDuyet')",
-            new { nv = nhanVienId, id = lichKiemTraId });
-        if (n > 0 && datLichId is not null)
-        {
-            await _db.ExecuteAsync(
-                "UPDATE dat_lich_xem_phong SET trang_thai = 'DaDuyet' WHERE id = @dl",
-                new { dl = datLichId.Value });
-        }
-        return n;
-    }
+    public Task<int> AssignEmployeeAsync(int lichKiemTraId, int? datLichId, int nhanVienId) =>
+        UpdateStatusAsync(lichKiemTraId, datLichId, "DaDuyet", null, null, nhanVienId);
 
     public Task<List<Dictionary<string, object?>>> ListByEmployeeAsync(int nhanVienId) =>
         _db.QueryAsync(
