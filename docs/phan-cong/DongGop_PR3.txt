@@ -1,0 +1,29 @@
+THONG TIN DONG GOP - PR 3
+
+Thanh vien: Hoàng Tuấn Anh
+GitHub: tuananhdau
+Email tac gia commit: anh_2351220058@dau.edu.vn
+Pull request: https://github.com/SmallFCraft/QuanLyNhaTro/pull/3
+Mang cong viec: M5 - dat lich public, lich kiem tra, luu tru Cong an
+Head da kiem tra: 867e46043b3ebf4cf127f5cfaa3780bb359e390e
+Trang thai: Da merge PR 3 vao main; 11 commit goc duoc giu nguyen tac gia.
+Merge commit: 3471d454cfa4ca5d5e7482cd4f6127ac633a299b
+Commit sua 4 loi review: 34a55cd (leader sua, khong tinh la commit cua thanh vien).
+Commit giai quyet conflict: 552e05f (leader tich hop M3/M4a/M5).
+Kiem chung: 114 passed, 0 failed, 1 skipped; 12 test M5 gom 8 test thanh vien va 4 test hoi quy cua leader.
+Pham vi xac minh: test server/router tren DB quanly_nhatro_test; chua kiem thu toan bo giao dien WebView2.
+Canh bao dependency co san: MySqlConnector 2.4.0 (NU1902).
+Ngay ghi nhan: 2026-11-24
+
+COMMIT GOC (giu nguyen tac gia):
+867e46043b3ebf4cf127f5cfaa3780bb359e390e | Hoàng Tuấn Anh <anh_2351220058@dau.edu.vn> | test: them DatLichLuuTruTests kiem thu dat lich public, lich kiem tra va luu tru cong an
+af50fba50b74373e712240d8ce2f1ba5870392f3 | Hoàng Tuấn Anh <anh_2351220058@dau.edu.vn> | feat(ui): ket noi trang public datlich.html voi PHONG_LAY_TRONG_PUBLIC va KHACH_THUE_DAT_LICH
+04bdcd207b43b7f3262ca678e85953c0a35322fd | Hoàng Tuấn Anh <anh_2351220058@dau.edu.vn> | feat(server): dispatch 12 action M5 va dang ky public action trong RequestRouter
+1c5a85baa7b8d8824d5be258f8abf014766ff15d | Hoàng Tuấn Anh <anh_2351220058@dau.edu.vn> | feat(server): them LuuTruService tra cuu ho so tam tru va lich su cu tru cong an
+345ea1d967e9f619c66ac6df626e2b284ddcdf0b | Hoàng Tuấn Anh <anh_2351220058@dau.edu.vn> | feat(server): them LichKiemTraService xu ly duyet, tu choi, gan viec va hoan thanh
+45018fc62b4eaf1cf4face59c6dfad1a61af0efd | Hoàng Tuấn Anh <anh_2351220058@dau.edu.vn> | feat(server): them DatLichService xu ly xem phong trong va dat lich public
+0e03e2f7f99532fa1656ef2330e64aee11aa4a64 | Hoàng Tuấn Anh <anh_2351220058@dau.edu.vn> | feat(server): them LichKiemTraRepository quan ly trang thai va phan cong nhan vien
+948c50f7dbbfe2072296fd82075d399ad936c37a | Hoàng Tuấn Anh <anh_2351220058@dau.edu.vn> | feat(server): them DatLichRepository truy van phong trong public va tao lich hen
+ab9f02f5ba30b2d8810aa51829476e7482946220 | Hoàng Tuấn Anh <anh_2351220058@dau.edu.vn> | feat(server): them bang dat_lich_xem_phong va lich_kiem_tra vao schema
+ef040bfb3f27579c313296b2b75829e72a502c71 | Hoàng Tuấn Anh <anh_2351220058@dau.edu.vn> | feat(protocol): cap nhat ma tran quyen RBAC cho cac action sprint M5
+d8f24fde5c8ec3ea5fde3941ea6b5127005f160a | Hoàng Tuấn Anh <anh_2351220058@dau.edu.vn> | feat(protocol): them 12 hang so action dat lich, lich kiem tra va luu tru
