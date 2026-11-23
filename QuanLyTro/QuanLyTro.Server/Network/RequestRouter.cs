@@ -21,6 +21,9 @@ public sealed class RequestRouter
     private readonly HopDongService _hopDongs;
     private readonly DienNuocService _dienNuoc;
     private readonly HoaDonService _hoaDon;
+    private readonly DeXuatService _deXuat;
+    private readonly SuCoService _suCo;
+    private readonly BaoCaoService _baoCao;
 
     private static readonly HashSet<string> PublicActions = new(StringComparer.Ordinal)
     { ActionNames.DANG_NHAP, ActionNames.KHACH_THUE_DANG_KY };
@@ -44,6 +47,12 @@ public sealed class RequestRouter
         var hoaDonRepo = new Repositories.HoaDonRepository(db);
         _dienNuoc = new DienNuocService(dienNuocRepo, roomRepo);
         _hoaDon = new HoaDonService(hoaDonRepo, dienNuocRepo, roomRepo);
+        // M4b
+        var deXuatRepo = new Repositories.DeXuatRepository(db);
+        var suCoRepo = new Repositories.SuCoRepository(db);
+        _deXuat = new DeXuatService(deXuatRepo, roomRepo, tenantRepo);
+        _suCo = new SuCoService(suCoRepo, roomRepo, tenantRepo);
+        _baoCao = new BaoCaoService(db);
     }
 
     public async Task<ResponsePacket> HandleAsync(RequestPacket packet, ClientContext ctx)
@@ -131,6 +140,15 @@ public sealed class RequestRouter
                 ActionNames.HOA_DON_THANH_TOAN => await _hoaDon.ThanhToanAsync(session!, packet.Data),
                 ActionNames.HOA_DON_CUA_TOI => await _hoaDon.CuaToiAsync(session!, packet.Data),
                 ActionNames.DOI_SOAT_CHAY => await _hoaDon.DoiSoatAsync(session!, packet.Data),
+                // M4b: đề xuất + sự cố + báo cáo
+                ActionNames.DeXuatTao => await _deXuat.TaoAsync(session!, packet.Data),
+                ActionNames.DeXuatLayTatCa => await _deXuat.LayTatCaAsync(session!),
+                ActionNames.DeXuatDuyet => await _deXuat.DuyetAsync(session!, packet.Data),
+                ActionNames.DeXuatTuChoi => await _deXuat.TuChoiAsync(session!, packet.Data),
+                ActionNames.SuCoTao => await _suCo.TaoAsync(session!, packet.Data),
+                ActionNames.SuCoLayTheoKhu => await _suCo.LayTheoKhuAsync(session!, packet.Data),
+                ActionNames.SuCoCapNhatTrangThai => await _suCo.CapNhatTrangThaiAsync(session!, packet.Data),
+                ActionNames.BaoCaoTongQuan => await _baoCao.TongQuanAsync(session!, packet.Data),
                 _ => throw new NotFoundOrDeniedException(),
             };
             return ResponsePacket.Ok(packet.RequestId, data);
