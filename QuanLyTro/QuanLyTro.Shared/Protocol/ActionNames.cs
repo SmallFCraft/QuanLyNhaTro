@@ -61,4 +61,14 @@ public static class ActionNames
     public const string HOA_DON_THANH_TOAN = "HOA_DON_THANH_TOAN";
     public const string HOA_DON_CUA_TOI = "HOA_DON_CUA_TOI";
     public const string DOI_SOAT_CHAY = "DOI_SOAT_CHAY";
+
+    // M4b - de xuat + su co + bao cao
+    public const string DeXuatTao = "DE_XUAT_TAO";
+    public const string DeXuatLayTatCa = "DE_XUAT_LAY_TAT_CA";
+    public const string DeXuatDuyet = "DE_XUAT_DUYET";
+    public const string DeXuatTuChoi = "DE_XUAT_TU_CHOI";
+    public const string SuCoTao = "SU_CO_TAO";
+    public const string SuCoLayTheoKhu = "SU_CO_LAY_THEO_KHU";
+    public const string SuCoCapNhatTrangThai = "SU_CO_CAP_NHAT_TRANG_THAI";
+    public const string BaoCaoTongQuan = "BAO_CAO_TONG_QUAN";
 }

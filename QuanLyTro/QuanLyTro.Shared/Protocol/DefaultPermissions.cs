@@ -57,6 +57,9 @@ public static class DefaultPermissions
             ActionNames.DIEN_NUOC_LAY_KY_TRUOC, ActionNames.DIEN_NUOC_GHI_SO,
             ActionNames.HOA_DON_TAO, ActionNames.HOA_DON_LAY_TAT_CA,
             ActionNames.HOA_DON_THANH_TOAN, ActionNames.DOI_SOAT_CHAY,
+            // M4b: de xuat + su co (KHONG co BAO_CAO_TONG_QUAN — chi ChuTro thay tien)
+            ActionNames.DeXuatTao, ActionNames.DeXuatLayTatCa,
+            ActionNames.SuCoTao, ActionNames.SuCoLayTheoKhu, ActionNames.SuCoCapNhatTrangThai,
         };
         m[VaiTroNguoiDung.QuanLy] = ql;
 
@@ -65,12 +68,16 @@ public static class DefaultPermissions
         {
             ActionNames.DANG_NHAP, ActionNames.DANG_XUAT, ActionNames.DOI_MAT_KHAU,
             ActionNames.PHONG_LAY_TAT_CA, ActionNames.PHONG_LAY_CHI_TIET,
+            // M4b: le tan bao su co + xem su co khu
+            ActionNames.SuCoTao, ActionNames.SuCoLayTheoKhu,
         };
 
         // NhanVien: hanh dong ca nhan. (M5 se cong action lam viec.)
         m[VaiTroNguoiDung.NhanVien] = new HashSet<string>(StringComparer.Ordinal)
         {
             ActionNames.DANG_NHAP, ActionNames.DANG_XUAT, ActionNames.DOI_MAT_KHAU,
+            // M4b: nhan vien gui de xuat + bao su co + xem su co khu
+            ActionNames.DeXuatTao, ActionNames.SuCoTao, ActionNames.SuCoLayTheoKhu,
         };
 
         // KhachThue: ho so + nghiep vu cua chinh minh.
@@ -83,6 +90,8 @@ public static class DefaultPermissions
             ActionNames.KhachThueNhanPhongQr,
             // M4a: khach thue chi xem hoa don phong cua minh
             ActionNames.HOA_DON_CUA_TOI,
+            // M4b: khach thue gui de xuat + bao su co phong cua minh
+            ActionNames.DeXuatTao, ActionNames.SuCoTao,
         };
 
         // CongAn: chi doc phong/phu luc tra cuu (M5 se cong luu tru chi doc).
