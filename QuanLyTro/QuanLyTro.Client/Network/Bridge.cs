@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Net.Sockets;
+using System.Text;
 using System.Text.Json;
 using QuanLyTro.Shared.Protocol;
 
@@ -43,7 +44,7 @@ public sealed class TcpClientTransport : IDisposable
         _pending[packet.RequestId] = tcs;
         try
         {
-            var bytes = JsonSerializer.SerializeToUtf8Bytes(packet, JsonDefaults.Options);
+            var bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(packet, JsonDefaults.Options) + "\n");
             await _writeLock.WaitAsync();
             try { await _stream!.WriteAsync(bytes); await _stream.FlushAsync(); }
             finally { _writeLock.Release(); }

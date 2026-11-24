@@ -172,8 +172,8 @@ async function createContract() {
 
 async function openContractForm(phongId, room) {
   // Khách đang ở phòng này + khách tự đăng ký chưa có phòng (chờ nhận phòng bằng QR).
-  const inRoom = await window.bridge.call('KHACH_THUE_THEO_PHONG', { phongId }) || [];
-  const pending = await window.bridge.call('KHACH_THUE_THEO_PHONG', { phongId: 0 }) || [];
+  const inRoom = await window.bridge.call('KHACH_THUE_LAY_THEO_PHONG', { phongId }) || [];
+  const pending = await window.bridge.call('KHACH_THUE_LAY_THEO_PHONG', { phongId: 0 }) || [];
   const khach_thue = [...inRoom, ...pending];
   if (!khach_thue.length) { toast('Chưa có người thuê nào để lập hợp đồng.', 'err'); return; }
 

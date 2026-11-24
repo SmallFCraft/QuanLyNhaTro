@@ -17,16 +17,16 @@ async function loadTenants() {
     // nếu không họ vô hình trong tab này dù màn lập hợp đồng vẫn thấy.
     const [phong, pending, contracts] = await Promise.all([
       (async () => (await window.bridge.call('PHONG_LAY_TAT_CA', {})) || [])(),
-      (async () => (await window.bridge.call('KHACH_THUE_THEO_PHONG', { phongId: 0 })) || [])(),
+      (async () => (await window.bridge.call('KHACH_THUE_LAY_THEO_PHONG', { phongId: 0 })) || [])(),
       (async () => (await window.bridge.call('HOP_DONG_LAY_TAT_CA', {}).catch(() => [])) || [])()
     ]);
     // Trạng thái thuê suy từ hợp đồng, không từ phong_id: HĐ ChoNhanPhong = chưa nhận phòng,
     // HĐ HieuLuc = đang thuê, có phòng mà không HĐ = treo.
     _contractByPhong = contractStatusByRoom(contracts);
-    // ponytail: KHACH_THUE_THEO_PHONG là hanh_dong đọc duy nhất (BR-16) nên phải hỏi từng phòng (N+1).
+    // ponytail: KHACH_THUE_LAY_THEO_PHONG là hanh_dong đọc duy nhất (BR-16) nên phải hỏi từng phòng (N+1).
     // Thêm TENANT_GET_ALL vào ma trận quyền khi số phòng lớn.
     const lists = await Promise.all(phong.map(async r => {
-      const khach_thue = (await window.bridge.call('KHACH_THUE_THEO_PHONG', { phongId: r.id })) || [];
+      const khach_thue = (await window.bridge.call('KHACH_THUE_LAY_THEO_PHONG', { phongId: r.id })) || [];
       // Gán phongId từ phòng đang hỏi: ta biết chắc họ thuộc phòng này, không phụ thuộc field server trả.
       return khach_thue.map(t => ({ ...t, phongId: t.phongId ?? r.id, soPhong: r.soPhong }));
     }));

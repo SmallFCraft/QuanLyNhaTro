@@ -57,12 +57,12 @@ function renderPoliceError(message) {
 
 async function ensurePoliceCache() {
   if (policeCache && policeRoomsCache) return;
-  // ponytail: KHACH_THUE_THEO_PHONG là hanh_dong đọc duy nhất cho Công an (BR-16) nên phải hỏi
+  // ponytail: KHACH_THUE_LAY_THEO_PHONG là hanh_dong đọc duy nhất cho Công an (BR-16) nên phải hỏi
   // từng phòng (N+1). Thêm TENANT_GET_ALL vào ma trận quyền khi số phòng lớn.
   const phong = (await window.bridge.call('PHONG_LAY_TAT_CA', {})) || [];
   const all = [];
   for (const r of phong) {
-    const khach_thue = (await window.bridge.call('KHACH_THUE_THEO_PHONG', { phongId: r.id })) || [];
+    const khach_thue = (await window.bridge.call('KHACH_THUE_LAY_THEO_PHONG', { phongId: r.id })) || [];
     // KhachThueDto không có soPhong -> gắn từ phòng đang lặp.
     for (const t of khach_thue) all.push({ ...t, soPhong: r.soPhong });
   }
