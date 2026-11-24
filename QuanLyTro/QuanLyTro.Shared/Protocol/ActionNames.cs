@@ -74,4 +74,14 @@ public static class ActionNames
     public const string LichKiemTraHoanThanh = "LICH_KIEM_TRA_HOAN_THANH";
     public const string XuatHoSoTamTru = "XUAT_HO_SO_TAM_TRU";
     public const string LichSuCuTruLay = "LICH_SU_CU_TRU_LAY";
+
+    // M4b - de xuat + su co + bao cao
+    public const string DeXuatTao = "DE_XUAT_TAO";
+    public const string DeXuatLayTatCa = "DE_XUAT_LAY_TAT_CA";
+    public const string DeXuatDuyet = "DE_XUAT_DUYET";
+    public const string DeXuatTuChoi = "DE_XUAT_TU_CHOI";
+    public const string SuCoTao = "SU_CO_TAO";
+    public const string SuCoLayTheoKhu = "SU_CO_LAY_THEO_KHU";
+    public const string SuCoCapNhatTrangThai = "SU_CO_CAP_NHAT_TRANG_THAI";
+    public const string BaoCaoTongQuan = "BAO_CAO_TONG_QUAN";
 }

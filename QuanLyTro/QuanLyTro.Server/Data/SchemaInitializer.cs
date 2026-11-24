@@ -243,5 +243,41 @@ SET @sql = IF(@fk_exists = 0,
     'ALTER TABLE tai_khoan ADD CONSTRAINT FK_tk_khu FOREIGN KEY (khu_tro_id) REFERENCES khu_tro(id)',
     'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;");
+
+        // M4b: đề xuất chờ duyệt từ QuanLy/NhanVien/KhachThue gửi ChuTro
+        await _db.ExecuteAsync(@"CREATE TABLE IF NOT EXISTS de_xuat (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    loai ENUM('ChamDutHopDong','SuaGia','MuaSam','SuaChuaLon','Khac') NOT NULL,
+    noi_dung VARCHAR(1000) NOT NULL,
+    nguoi_gui_id INT NOT NULL,
+    khu_tro_id INT NULL,
+    trang_thai ENUM('ChoDuyet','DaDuyet','TuChoi') NOT NULL DEFAULT 'ChoDuyet',
+    nguoi_duyet_id INT NULL,
+    phan_hoi VARCHAR(500) NULL,
+    tao_luc DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT FK_dx_nguoi_gui FOREIGN KEY (nguoi_gui_id) REFERENCES tai_khoan(id),
+    CONSTRAINT FK_dx_khu FOREIGN KEY (khu_tro_id) REFERENCES khu_tro(id),
+    CONSTRAINT FK_dx_nguoi_duyet FOREIGN KEY (nguoi_duyet_id) REFERENCES tai_khoan(id),
+    INDEX idx_dx_tt (trang_thai),
+    INDEX idx_dx_khu (khu_tro_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
+        // M4b: sự cố phòng (4 mức độ, 3 trạng thái)
+        await _db.ExecuteAsync(@"CREATE TABLE IF NOT EXISTS su_co (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    phong_id INT NOT NULL,
+    nguoi_bao_cao_id INT NOT NULL,
+    muc_do ENUM('Thap','TrungBinh','Cao','KhanCap') NOT NULL DEFAULT 'TrungBinh',
+    trang_thai ENUM('Moi','DangXuLy','DaXuLy') NOT NULL DEFAULT 'Moi',
+    mo_ta VARCHAR(1000) NOT NULL,
+    ket_qua VARCHAR(1000) NULL,
+    tao_luc DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    xu_ly_xong_luc DATETIME NULL,
+    CONSTRAINT FK_sc_phong FOREIGN KEY (phong_id) REFERENCES phong(id),
+    CONSTRAINT FK_sc_nguoi_bao FOREIGN KEY (nguoi_bao_cao_id) REFERENCES tai_khoan(id),
+    INDEX idx_sc_mucdo (muc_do),
+    INDEX idx_sc_tt (trang_thai),
+    INDEX idx_sc_phong (phong_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
     }
 }
