@@ -264,8 +264,11 @@ async function toggleTenantLock(id) {
 }
 
 async function applyLock(id, biKhoa, lyDoKhoa) {
+  const t = findTenant(id);
+  if (!t?.tenDangNhap) { toast('Không tìm thấy tên đăng nhập của khách thuê.', 'err'); return; }
   try {
-    await window.bridge.call('KHACH_THUE_KHOA', { khachThueId: id, biKhoa, lyDoKhoa });
+    await window.bridge.call(biKhoa ? 'TAI_KHOAN_KHOA' : 'TAI_KHOAN_MO_KHOA',
+      biKhoa ? { tenDangNhap: t.tenDangNhap, lyDo: lyDoKhoa } : { tenDangNhap: t.tenDangNhap });
     toast(biKhoa ? 'Đã khóa tài khoản.' : 'Đã mở khóa tài khoản.', 'ok');
     await loadTenants();
   } catch (err) {

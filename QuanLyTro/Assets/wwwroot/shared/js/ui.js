@@ -243,6 +243,6 @@ function boDauMemo(text) {
 window.alert = msg => toast(msg, 'err');
 
 async function logout() {
-  await window.bridge.call('UI_LOGOUT', {});
+  try { await window.bridge.call('DANG_XUAT', {}); } catch { /* phien da het han */ }
   window.location.href = '../auth/index.html';
 }

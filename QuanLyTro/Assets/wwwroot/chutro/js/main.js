@@ -12,7 +12,7 @@ const LANDLORD_TITLES = {
 };
 
 const LANDLORD_LOADERS = {
-  dash: () => loadDash(),
+  dash: () => {}, // dashboard M4b tu nap qua refreshLandlordOverview
   phong: () => loadRooms(),
   khach_thue: () => loadTenants(),
   hop_dong: () => loadContracts(),

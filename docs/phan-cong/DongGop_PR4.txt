@@ -1,0 +1,22 @@
+THONG TIN DONG GOP - PR 4
+
+Thanh vien: hieu09870
+GitHub: hieu09870
+Email tac gia commit: dohieu182@gmail.com
+Pull request: https://github.com/SmallFCraft/QuanLyNhaTro/pull/4
+Mang cong viec: M4b - de xuat duyet, su co, bao cao tong quan
+Head da kiem tra: bb90ad02e586ecc6b2ff0e02b910455203cbc7f1
+Trang thai: Da merge PR 4 vao main; 5 commit goc duoc giu nguyen tac gia.
+Merge commit: 3678728886c9a4b8a689e0582a3a55d46abeac38
+Commit sua loi truoc merge: fa8cb8a (leader sua framing TCP va ten action, khong tinh la commit cua thanh vien).
+Giai quyet conflict: leader gop RequestRouter, ActionNames, DefaultPermissions giu ca M5 va M4b.
+Kiem chung: 127 passed, 0 failed, 1 skipped; UI Chu tro va Quan ly chay that qua WebView2, khong co action bi tu choi.
+Canh bao dependency co san: MySqlConnector 2.4.0 (NU1902).
+Ngay ghi nhan: 2026-11-24
+
+COMMIT GOC (giu nguyen tac gia):
+bb90ad02e586ecc6b2ff0e02b910455203cbc7f1 | hieu09870 <dohieu182@gmail.com> | test(m4b): them unit test cho de xuat, su co, bao cao va RBAC
+911dc9c0e4cbd045c5dbc41f8dd6f77d66ec0218 | hieu09870 <dohieu182@gmail.com> | feat(ui): noi giao dien de xuat, su co va dashboard bao cao
+0684fa0623d56e34fcf8aad8104933d49f2c5956 | hieu09870 <dohieu182@gmail.com> | feat(server): cai dat nghiep vu de xuat, su co va bao cao tong quan
+34ff6750976a41230065d5e5f2a7a0ee2764bd16 | hieu09870 <dohieu182@gmail.com> | feat(server): them schema bang de_xuat va su_co
+4ee0f89aea393c5d922790745548f13119b7e633 | hieu09870 <dohieu182@gmail.com> | feat(shared): them 8 action va ma tran quyen RBAC cho M4b

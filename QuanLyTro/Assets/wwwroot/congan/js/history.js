@@ -48,18 +48,16 @@ async function loadHistory() {
 
 async function exportHistory() {
   const { from, to } = historyRange();
-  const payload = {
-    tuNgay: from || null,
-    denNgay: to || null,
-    dinhDang: 'CSV',
-    soPhong: null,
-    loaiBienDong: null
-  };
   try {
-    const res = await window.bridge.call('XUAT_LICH_SU_CU_TRU', payload);
-    const count = res.soDong ?? res.rowCount ?? 0;
-    const path = res.duongDanFile ?? res.filePath ?? '';
-    toast(`Đã xuất ${count} bản ghi tới: ${path}`, 'ok');
+    const rows = await window.bridge.call('LICH_SU_CU_TRU_LAY', { from, to, soPhong: null, loaiBienDong: null }) || [];
+    const cell = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+    const lines = [['Ho ten', 'So phong', 'Loai bien dong', 'Ngay', 'Ghi chu'].map(cell).join(',')]
+      .concat(rows.map(h => [h.hoTen, h.soPhong, h.loaiBienDong ?? h.eventType, h.ngayBienDong ?? h.eventDate, h.ghiChu].map(cell).join(',')));
+    const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const link = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `lich-su-cu-tru_${from}_${to}.csv` });
+    link.click();
+    URL.revokeObjectURL(link.href);
+    toast(`Đã xuất ${rows.length} bản ghi.`, 'ok');
   } catch (err) {
     alertDialog(err.message, 'Xuất thất bại');
   }

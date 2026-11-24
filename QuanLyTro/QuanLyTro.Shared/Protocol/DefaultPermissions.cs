@@ -103,6 +103,7 @@ public static class DefaultPermissions
             ActionNames.DANG_NHAP, ActionNames.DANG_XUAT, ActionNames.DOI_MAT_KHAU,
             ActionNames.PHONG_LAY_TAT_CA, ActionNames.PHONG_LAY_CHI_TIET,
             ActionNames.XuatHoSoTamTru, ActionNames.LichSuCuTruLay,
+            ActionNames.KHACH_THUE_LAY_THEO_PHONG,
         };
 
         return m;
