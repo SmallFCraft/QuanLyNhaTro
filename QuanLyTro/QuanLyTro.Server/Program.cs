@@ -68,6 +68,13 @@ public static class Program
                 "INSERT INTO tai_khoan (ten_dang_nhap, mat_khau_hash, ho_ten, vai_tro) VALUES (@u, @h, @n, @v)",
                 new { u = user, h = PasswordHasher.Hash(pass), n = user, v = role });
         }
-        Console.WriteLine("Seed demo OK: chutro|chutro, quanly|quanly, letan|letan, nhanvien|nhanvien, congan|congan");
+        const string kt = "100000000001";
+        await db.ExecuteAsync(
+            "INSERT INTO tai_khoan (ten_dang_nhap, mat_khau_hash, ho_ten, vai_tro) VALUES (@u, @h, @n, 'KhachThue')",
+            new { u = kt, h = PasswordHasher.Hash(kt), n = "Khach Thue Demo" });
+        await db.ExecuteAsync(
+            "INSERT INTO ho_so_khach_thue (tai_khoan_id, cccd, ngay_sinh, so_dien_thoai, que_quan) SELECT id, @u, '2000-01-01', '0900000001', 'Da Nang' FROM tai_khoan WHERE ten_dang_nhap = @u",
+            new { u = kt });
+        Console.WriteLine("Seed demo OK: chutro|chutro, quanly|quanly, letan|letan, nhanvien|nhanvien, congan|congan, 100000000001|100000000001");
     }
 }
