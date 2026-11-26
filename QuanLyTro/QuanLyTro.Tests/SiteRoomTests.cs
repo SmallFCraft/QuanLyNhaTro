@@ -79,6 +79,66 @@ public class SiteRoomTests
     }
 
     [TestMethod]
+    public async Task ChuTro_GanPhanQuyen_DoiTacDongTaiRuntime()
+    {
+        var khu = GetInt(await Call(ActionNames.KHU_TRO_THEM, _chuTroToken,
+            new { tenKhuTro = "A", diaChi = "x" }), "khuTroId");
+        var room = GetInt(await Call(ActionNames.PHONG_THEM, _chuTroToken,
+            new { khuTroId = khu, soPhong = "101", giaThue = 1000000m, soNguoiToiDa = 2 }), "phongId");
+        await _db.ExecuteAsync("INSERT INTO tai_khoan (ten_dang_nhap, mat_khau_hash, ho_ten, vai_tro, khu_tro_id) VALUES ('qlrights',@h,'QL','QuanLy',@k)", new { h = PasswordHasher.Hash("qlrights"), k = khu });
+        var manager = new AuthenticationService(_db, _sessions);
+        var token = (await manager.LoginAsync("qlrights", "qlrights")).Token;
+        var saved = await Call(ActionNames.PHAN_QUYEN_CAP_NHAT_VAI_TRO, _chuTroToken, new
+        {
+            vaiTro = "QuanLy", thuHoi = new[] { ActionNames.PHONG_LAY_TAT_CA }, capQuyen = Array.Empty<string>()
+        });
+        Assert.IsTrue(saved.Success, saved.Message);
+        var response = await Call(ActionNames.PHONG_LAY_TAT_CA, token, new { });
+        Assert.IsFalse(response.Success);
+    }
+
+    [TestMethod]
+    public async Task ChuTro_TuChoiThuHoiQuyenNen_KhongDanhDauVaiTroTuyChinh()
+    {
+        var denied = await Call(ActionNames.PHAN_QUYEN_CAP_NHAT_VAI_TRO, _chuTroToken, new
+        {
+            vaiTro = "ChuTro", thuHoi = new[] { ActionNames.DANG_NHAP }, capQuyen = Array.Empty<string>()
+        });
+        Assert.IsFalse(denied.Success);
+        Assert.AreEqual(0, await _db.ScalarT<int>("SELECT COUNT(*) FROM quyen_vai_tro_tuy_chinh WHERE vai_tro='ChuTro'"));
+        Assert.IsTrue((await Call(ActionNames.PHONG_LAY_TAT_CA, _chuTroToken, new { })).Success);
+    }
+
+    [TestMethod]
+    public async Task ChuTro_LanDauTuyChinhKhongCapLaiQuyenDaThieu()
+    {
+        await _db.ExecuteAsync("INSERT INTO quyen_vai_tro (vai_tro, hanh_dong) VALUES ('QuanLy', @a)", new { a = ActionNames.PHONG_LAY_CHI_TIET });
+        var saved = await Call(ActionNames.PHAN_QUYEN_CAP_NHAT_VAI_TRO, _chuTroToken, new
+        {
+            vaiTro = "QuanLy", thuHoi = Array.Empty<string>(), capQuyen = Array.Empty<string>()
+        });
+        Assert.IsTrue(saved.Success, saved.Message);
+        Assert.AreEqual(0, await _db.ScalarT<int>("SELECT COUNT(*) FROM quyen_vai_tro WHERE vai_tro='QuanLy' AND hanh_dong=@a", new { a = ActionNames.PHONG_LAY_TAT_CA }));
+        Assert.AreEqual(1, await _db.ScalarT<int>("SELECT COUNT(*) FROM quyen_vai_tro WHERE vai_tro='QuanLy' AND hanh_dong=@a", new { a = ActionNames.PHONG_LAY_CHI_TIET }));
+    }
+
+    [TestMethod]
+    public async Task ChuTro_CapNhatPhong_ThayDoiSoPhongVaGia()
+    {
+        var khu = GetInt(await Call(ActionNames.KHU_TRO_THEM, _chuTroToken,
+            new { tenKhuTro = "A", diaChi = "x" }), "khuTroId");
+        var phong = GetInt(await Call(ActionNames.PHONG_THEM, _chuTroToken,
+            new { khuTroId = khu, soPhong = "101", giaThue = 1000000m, soNguoiToiDa = 2 }), "phongId");
+        var resp = await Call(ActionNames.PHONG_CAP_NHAT, _chuTroToken,
+            new { phongId = phong, soPhong = "A-101", giaThue = 1500000m, soNguoiToiDa = 3, moTa = "da sua" });
+        Assert.IsTrue(resp.Success, resp.Message);
+        var rows = await _db.QueryAsync("SELECT so_phong, gia_thue, so_nguoi_toi_da FROM phong WHERE id=@id", new { id = phong });
+        Assert.AreEqual("A-101", rows[0]["so_phong"]);
+        Assert.AreEqual(1500000m, Convert.ToDecimal(rows[0]["gia_thue"]));
+        Assert.AreEqual(3, Convert.ToInt32(rows[0]["so_nguoi_toi_da"]));
+    }
+
+    [TestMethod]
     public async Task QuanLy_ScopeKhu_KhongThayKhuKhac()
     {
         // ChuTro tạo khu A + B, phòng A1 và B1

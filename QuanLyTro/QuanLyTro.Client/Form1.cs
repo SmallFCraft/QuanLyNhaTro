@@ -66,10 +66,11 @@ public sealed partial class Form1 : Form
 
     private async void OnWebMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
+        var requestId = "";
         try
         {
             using var doc = JsonDocument.Parse(e.WebMessageAsJson);
-            var requestId = doc.RootElement.GetProperty("requestId").GetString()!;
+            requestId = doc.RootElement.GetProperty("requestId").GetString()!;
             var action = doc.RootElement.GetProperty("action").GetString()!;
             JsonElement data = doc.RootElement.TryGetProperty("data", out var d)
                 ? d.Clone() : JsonSerializer.Deserialize<JsonElement>("{}");
@@ -95,19 +96,18 @@ public sealed partial class Form1 : Form
                 using var ok = JsonDocument.Parse(JsonSerializer.Serialize(resp.Data!, JsonDefaults.Options));
                 _token = ok.RootElement.GetProperty("token").GetString();
                 _vaiTro = ok.RootElement.GetProperty("vaiTro").GetString();
-                _web.CoreWebView2.Navigate($"https://app.quanlytro.local/{ShellFolder(_vaiTro!)}/index.html");
+                // JS (auth.js/ui.js) tu dieu huong kem ?u=; Navigate o day se tao loat nap doi ERR_FILE_NOT_FOUND.
             }
             else if (action == "DANG_XUAT" && resp.Success)
             {
                 _token = null;
                 _vaiTro = null;
-                _web.CoreWebView2.Navigate("https://app.quanlytro.local/auth/index.html");
             }
         }
         catch (Exception ex)
         {
             _web.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new
-            { requestId = "", Success = false, Message = "Lỗi bridge: " + ex.Message, Data = (object?)null },
+            { requestId, Success = false, Message = "Lỗi bridge: " + ex.Message, Data = (object?)null },
             JsonDefaults.Options));
         }
     }

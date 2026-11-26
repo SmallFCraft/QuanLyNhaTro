@@ -6,9 +6,11 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>12</LangVersion>
+    <!-- WebView2 targets inject the WPF assembly into WinForms-only apps; WindowsBase v4/v5 conflict is benign here. -->
+    <NoWarn>$(NoWarn);MSB3277</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4370.26" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\QuanLyTro.Shared\QuanLyTro.Shared.csproj" />

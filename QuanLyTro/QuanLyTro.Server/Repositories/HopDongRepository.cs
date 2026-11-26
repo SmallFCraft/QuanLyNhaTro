@@ -13,6 +13,11 @@ public sealed class HopDongRepository
 
     public Task<int> ScalarCountAsync(string sql, object param) => _db.ScalarT<int>(sql, param);
 
+    public Task<bool> ExistsInScopeAsync(int hopDongId, int? khuTroId) =>
+        _db.ScalarT<int>(@"SELECT COUNT(*) FROM hop_dong h JOIN phong p ON p.id=h.phong_id
+                          WHERE h.id=@id AND (@k IS NULL OR p.khu_tro_id=@k)",
+            new { id = hopDongId, k = (object?)khuTroId ?? DBNull.Value }).ContinueWith(t => t.Result > 0);
+
     public Task<Dictionary<string, object?>?> ByIdAsync(int hopDongId) =>
         _db.QueryAsync(
             @"SELECT hd.*, p.so_phong, p.khu_tro_id, tk.ho_ten AS ten_nguoi_dai_dien, hs.cccd
@@ -46,13 +51,58 @@ public sealed class HopDongRepository
             new { h = hopDongId, l = loai, n = noiDung, d = ngayApDung });
 
     /// <summary>Tạo hợp đồng + mã nhận phòng PIN trong 1 transaction, nguyên tử.</summary>
-    public async Task<(int HopDongId, string Pin)> TaoHopDongAsync(
+    public async Task<(int HopDongId, string? Pin)> TaoHopDongAsync(
         int phongId, int nguoiDaiDienId, DateOnly ngayBatDau, DateOnly ngayKetThuc,
-        decimal giaThue, decimal tienCoc, string trangThai, string? ghiChu, DateOnly hetHanMa)
+        decimal giaThue, decimal tienCoc, string trangThai, string? ghiChu, DateOnly hetHanMa, int nguoiThucHienId)
     {
         var (conn, tx) = await _db.BeginAsync();
         try
         {
+            string roomStatus;
+            int capacity;
+            int? currentRoom;
+            await using (var room = conn.CreateCommand())
+            {
+                room.Transaction = tx;
+                room.CommandText = "SELECT trang_thai, so_nguoi_toi_da FROM phong WHERE id=@p FOR UPDATE";
+                room.Parameters.AddWithValue("@p", phongId);
+                await using var reader = await room.ExecuteReaderAsync();
+                if (!await reader.ReadAsync()) throw new NotFoundOrDeniedException();
+                roomStatus = reader.GetString(0);
+                capacity = reader.GetInt32(1);
+                await reader.CloseAsync();
+            }
+            await using (var open = conn.CreateCommand())
+            {
+                open.Transaction = tx;
+                open.CommandText = "SELECT COUNT(*) FROM hop_dong WHERE phong_id=@p AND trang_thai IN ('ChoNhanPhong','HieuLuc')";
+                open.Parameters.AddWithValue("@p", phongId);
+                if (Convert.ToInt32(await open.ExecuteScalarAsync()) > 0)
+                    throw new BusinessRuleException("Phòng đang có hợp đồng chưa kết thúc, không thể lập hợp đồng mới.");
+            }
+            await using (var tenant = conn.CreateCommand())
+            {
+                tenant.Transaction = tx;
+                tenant.CommandText = "SELECT phong_id FROM ho_so_khach_thue WHERE tai_khoan_id=@t FOR UPDATE";
+                tenant.Parameters.AddWithValue("@t", nguoiDaiDienId);
+                var raw = await tenant.ExecuteScalarAsync();
+                currentRoom = raw is null or DBNull ? null : Convert.ToInt32(raw);
+                if (raw is null) throw new NotFoundOrDeniedException();
+            }
+            if (trangThai == "ChoNhanPhong" && (roomStatus != "Trong" || currentRoom is not null))
+                throw new BusinessRuleException("Mã nhận phòng chỉ dùng cho khách chưa được gán vào phòng.");
+            if (trangThai == "HieuLuc" && !((roomStatus == "Trong" && currentRoom is null) || (roomStatus == "DaThue" && currentRoom == phongId)))
+                throw new BusinessRuleException("Chỉ có thể bàn giao phòng trống hoặc phòng khách đã được gán trực tiếp.");
+            if (trangThai == "HieuLuc")
+            {
+                await using var count = conn.CreateCommand();
+                count.Transaction = tx;
+                count.CommandText = "SELECT COUNT(*) FROM ho_so_khach_thue WHERE phong_id=@p AND tai_khoan_id<>@t";
+                count.Parameters.AddWithValue("@p", phongId);
+                count.Parameters.AddWithValue("@t", nguoiDaiDienId);
+                if (Convert.ToInt32(await count.ExecuteScalarAsync()) >= capacity)
+                    throw new BusinessRuleException("Phòng đã đầy, không thể bàn giao.");
+            }
             int hopDongId;
             await using (var cmd = conn.CreateCommand())
             {
@@ -71,17 +121,48 @@ public sealed class HopDongRepository
                 await cmd.ExecuteNonQueryAsync();
                 hopDongId = (int)cmd.LastInsertedId;
             }
-            var pin = SinhPin();
-            await using (var cmd = conn.CreateCommand())
+            string? pin = null;
+            if (trangThai == "ChoNhanPhong")
             {
+                pin = SinhPin();
+                var qrData = $"QLT|{hopDongId}|{pin}";
+                await using var cmd = conn.CreateCommand();
                 cmd.Transaction = tx;
-                cmd.CommandText = @"INSERT INTO ma_nhan_phong (hop_dong_id, pin, qr_data, het_han)
-                                    VALUES (@h, @pin, @qr, @hh)";
+                cmd.CommandText = @"INSERT INTO ma_nhan_phong (hop_dong_id, ma_pin_hash, ma_qr_token_hash, het_han)
+                                    VALUES (@h, @pinHash, @qrHash, @hh)";
                 cmd.Parameters.AddWithValue("@h", hopDongId);
-                cmd.Parameters.AddWithValue("@pin", pin);
-                cmd.Parameters.AddWithValue("@qr", $"QLT|{hopDongId}|{pin}");
+                cmd.Parameters.AddWithValue("@pinHash", HashMa(pin));
+                cmd.Parameters.AddWithValue("@qrHash", HashMa(qrData));
                 cmd.Parameters.AddWithValue("@hh", hetHanMa.ToDateTime(TimeOnly.MinValue));
                 await cmd.ExecuteNonQueryAsync();
+            }
+            else if (currentRoom is null)
+            {
+                await using (var cmd = conn.CreateCommand())
+                {
+                    cmd.Transaction = tx;
+                    cmd.CommandText = "UPDATE phong SET trang_thai='DaThue' WHERE id=@p AND trang_thai='Trong'";
+                    cmd.Parameters.AddWithValue("@p", phongId);
+                    if (await cmd.ExecuteNonQueryAsync() != 1) throw new BusinessRuleException("Phòng không còn trống, không thể bàn giao.");
+                }
+                await using (var cmd = conn.CreateCommand())
+                {
+                    cmd.Transaction = tx;
+                    cmd.CommandText = "UPDATE ho_so_khach_thue SET phong_id=@p, ngay_cap_nhat=NOW() WHERE tai_khoan_id=@t AND phong_id IS NULL";
+                    cmd.Parameters.AddWithValue("@p", phongId);
+                    cmd.Parameters.AddWithValue("@t", nguoiDaiDienId);
+                    if (await cmd.ExecuteNonQueryAsync() != 1) throw new BusinessRuleException("Người đại diện đã được gán phòng khác hoặc không có hồ sơ thuê.");
+                }
+                await using (var cmd = conn.CreateCommand())
+                {
+                    cmd.Transaction = tx;
+                    cmd.CommandText = @"INSERT INTO lich_su_cu_tru (tai_khoan_khach_id, phong_id, khu_tro_id, loai_bien_dong, nguoi_thuc_hien_id)
+                        SELECT @t, p.id, p.khu_tro_id, 'NhanPhong', @n FROM phong p WHERE p.id=@p";
+                    cmd.Parameters.AddWithValue("@t", nguoiDaiDienId);
+                    cmd.Parameters.AddWithValue("@p", phongId);
+                    cmd.Parameters.AddWithValue("@n", nguoiThucHienId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
             }
             await tx.CommitAsync();
             return (hopDongId, pin);
@@ -105,20 +186,21 @@ public sealed class HopDongRepository
         try
         {
             int hopDongId, phongId;
-            string pin;
             await using (var cmd = conn.CreateCommand())
             {
                 cmd.Transaction = tx;
-                cmd.CommandText = @"SELECT m.hop_dong_id, m.pin, hd.phong_id
+                cmd.CommandText = @"SELECT m.hop_dong_id, hd.phong_id
                                     FROM ma_nhan_phong m
                                     JOIN hop_dong hd ON hd.id = m.hop_dong_id
-                                    WHERE (m.qr_data = @t OR m.pin = @t)
+                                    WHERE ((m.ma_qr_token_hash = @hash AND @isQr = 1)
+                                           OR (m.ma_pin_hash = @hash AND @isQr = 0))
                                       AND m.da_su_dung = 0
                                       AND m.het_han >= @today
                                       AND hd.nguoi_dai_dien_id = @who
                                     LIMIT 1
                                     FOR UPDATE";
-                cmd.Parameters.AddWithValue("@t", tokenOrPin);
+                cmd.Parameters.AddWithValue("@hash", HashMa(tokenOrPin));
+                cmd.Parameters.AddWithValue("@isQr", tokenOrPin.StartsWith("QLT|", StringComparison.Ordinal) ? 1 : 0);
                 cmd.Parameters.AddWithValue("@today", DateOnly.FromDateTime(DateTime.Today).ToDateTime(TimeOnly.MinValue));
                 cmd.Parameters.AddWithValue("@who", nguoiThucHienId);
                 await using var reader = await cmd.ExecuteReaderAsync();
@@ -130,8 +212,7 @@ public sealed class HopDongRepository
                     return null;
                 }
                 hopDongId = reader.GetInt32(0);
-                pin = reader.GetString(1);
-                phongId = reader.GetInt32(2);
+                phongId = reader.GetInt32(1);
                 await reader.CloseAsync();
             }
 
@@ -152,9 +233,10 @@ public sealed class HopDongRepository
             await using (var cmd = conn.CreateCommand())
             {
                 cmd.Transaction = tx;
-                cmd.CommandText = "UPDATE ma_nhan_phong SET da_su_dung = 1 WHERE hop_dong_id = @h AND pin = @pin";
+                // xóa sạch bản băm/hạn sau kích hoạt → quét lại không còn dòng để khớp
+                cmd.CommandText = @"UPDATE ma_nhan_phong SET da_su_dung = 1, ma_pin_hash = NULL,
+                                    ma_qr_token_hash = NULL, het_han = NULL WHERE hop_dong_id = @h";
                 cmd.Parameters.AddWithValue("@h", hopDongId);
-                cmd.Parameters.AddWithValue("@pin", pin);
                 await cmd.ExecuteNonQueryAsync();
             }
             await using (var cmd = conn.CreateCommand())
@@ -207,78 +289,74 @@ public sealed class HopDongRepository
         }
     }
 
-    /// <summary>Chấm dứt: hợp đồng ChamDut, phòng Trong, vô hiệu mã chưa dùng, xóa phong_id hồ sơ
-    /// người đại diện + ghi lịch sử TraPhong — 1 transaction.</summary>
-    public async Task ChamDutAsync(int hopDongId, string? ghiChu)
+    /// <summary>Chấm dứt: hợp đồng ChamDut; chỉ khi khách đã bàn giao (không còn ở phòng) mới trả phòng
+    /// + ghi lịch sử TraPhong — 1 transaction. Đặc tả MOD-03-03: chấm dứt không tự đẩy người ở ra.</summary>
+    public Task ChamDutAsync(int hopDongId, string lyDo, DateOnly ngayBanGiao, int? nguoiThucHienId = null) =>
+        ChamDutTrongTxAsync(null, null, hopDongId, lyDo, ngayBanGiao, nguoiThucHienId);
+
+    /// <summary>Chấm dứt dùng chung kết nối/transaction (đặc tả MOD-04-07: duyệt đề xuất gọi
+    /// hàm gốc trong cùng transaction). Truyền conn/tx khi đang giữ transaction bên ngoài.</summary>
+    public async Task ChamDutTrongTxAsync(MySqlConnection? conn, MySqlTransaction? tx,
+        int hopDongId, string lyDo, DateOnly ngayBanGiao, int? nguoiThucHienId = null)
     {
-        var (conn, tx) = await _db.BeginAsync();
+        var ownsTx = conn is null;
+        if (ownsTx) (conn, tx) = await _db.BeginAsync();
+        var c = conn!;
+        var t = tx!;
         try
         {
             int phongId, nguoiDaiDienId;
-            await using (var cmd = conn.CreateCommand())
+            string trangThai;
+            await using (var cmd = c.CreateCommand())
             {
-                cmd.Transaction = tx;
-                cmd.CommandText = "SELECT phong_id, nguoi_dai_dien_id FROM hop_dong WHERE id = @h FOR UPDATE";
+                cmd.Transaction = t;
+                cmd.CommandText = "SELECT phong_id, nguoi_dai_dien_id, trang_thai FROM hop_dong WHERE id = @h FOR UPDATE";
                 cmd.Parameters.AddWithValue("@h", hopDongId);
                 await using var reader = await cmd.ExecuteReaderAsync();
                 if (!await reader.ReadAsync()) throw new NotFoundOrDeniedException();
                 phongId = reader.GetInt32(0);
                 nguoiDaiDienId = reader.GetInt32(1);
+                trangThai = reader.GetString(2);
                 await reader.CloseAsync();
             }
-            await using (var cmd = conn.CreateCommand())
+            // kiểm tra lại trong transaction: đề xuất có thể được duyệt sau khi đã chấm dứt
+            if (trangThai == "ChamDut") throw new BusinessRuleException("Hợp đồng đã chấm dứt trước đó.");
+            var daBanGiao = trangThai == "ChoNhanPhong"; // chưa ai ở; HieuLuc thì còn trước ngày bàn giao
+            await using (var cmd = c.CreateCommand())
             {
-                cmd.Transaction = tx;
+                cmd.Transaction = t;
                 cmd.CommandText = @"UPDATE hop_dong SET trang_thai = 'ChamDut',
-                                    ghi_chu = COALESCE(@gc, ghi_chu) WHERE id = @h";
+                                    ly_do_cham_dut = @ld, ngay_ban_giao_du_kien = @nb WHERE id = @h";
                 cmd.Parameters.AddWithValue("@h", hopDongId);
-                cmd.Parameters.AddWithValue("@gc", (object?)ghiChu ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ld", lyDo);
+                cmd.Parameters.AddWithValue("@nb", ngayBanGiao.ToString("yyyy-MM-dd"));
                 await cmd.ExecuteNonQueryAsync();
             }
-            await using (var cmd = conn.CreateCommand())
+            await using (var cmd = c.CreateCommand())
             {
-                cmd.Transaction = tx;
-                cmd.CommandText = "UPDATE phong SET trang_thai = 'Trong' WHERE id = @p";
-                cmd.Parameters.AddWithValue("@p", phongId);
-                await cmd.ExecuteNonQueryAsync();
-            }
-            await using (var cmd = conn.CreateCommand())
-            {
-                cmd.Transaction = tx;
+                cmd.Transaction = t;
                 cmd.CommandText = "UPDATE ma_nhan_phong SET da_su_dung = 1 WHERE hop_dong_id = @h AND da_su_dung = 0";
                 cmd.Parameters.AddWithValue("@h", hopDongId);
                 await cmd.ExecuteNonQueryAsync();
             }
-            // trả phòng khỏi hồ sơ người đại diện (nếu đang trỏ phòng của hợp đồng này)
-            await using (var cmd = conn.CreateCommand())
+            if (daBanGiao)
             {
-                cmd.Transaction = tx;
-                cmd.CommandText = "UPDATE ho_so_khach_thue SET phong_id = NULL WHERE tai_khoan_id = @t AND phong_id = @p";
-                cmd.Parameters.AddWithValue("@t", nguoiDaiDienId);
+                await using var cmd = c.CreateCommand();
+                cmd.Transaction = t;
+                cmd.CommandText = "UPDATE phong SET trang_thai = 'Trong' WHERE id = @p";
                 cmd.Parameters.AddWithValue("@p", phongId);
                 await cmd.ExecuteNonQueryAsync();
             }
-            // ghi lịch sử trả phòng khớp hành vi TraPhong của M2
-            await using (var cmd = conn.CreateCommand())
-            {
-                cmd.Transaction = tx;
-                cmd.CommandText = @"INSERT INTO lich_su_cu_tru (tai_khoan_khach_id, phong_id, khu_tro_id, loai_bien_dong, nguoi_thuc_hien_id)
-                                    SELECT @t, p.id, p.khu_tro_id, 'TraPhong', @n FROM phong p WHERE p.id = @p";
-                cmd.Parameters.AddWithValue("@t", nguoiDaiDienId);
-                cmd.Parameters.AddWithValue("@p", phongId);
-                cmd.Parameters.AddWithValue("@n", nguoiDaiDienId);
-                await cmd.ExecuteNonQueryAsync();
-            }
-            await tx.CommitAsync();
+            if (ownsTx) await t.CommitAsync();
         }
         catch
         {
-            await tx.RollbackAsync();
+            if (ownsTx) await t.RollbackAsync();
             throw;
         }
         finally
         {
-            await conn.CloseAsync();
+            if (ownsTx) await conn!.CloseAsync();
         }
     }
 
@@ -314,11 +392,11 @@ public sealed class HopDongRepository
             await using (var cmd = conn.CreateCommand())
             {
                 cmd.Transaction = tx;
-                cmd.CommandText = @"INSERT INTO ma_nhan_phong (hop_dong_id, pin, qr_data, het_han)
-                                    VALUES (@h, @pin, @qr, @hh)";
+                cmd.CommandText = @"INSERT INTO ma_nhan_phong (hop_dong_id, ma_pin_hash, ma_qr_token_hash, het_han)
+                                    VALUES (@h, @pinHash, @qrHash, @hh)";
                 cmd.Parameters.AddWithValue("@h", hopDongId);
-                cmd.Parameters.AddWithValue("@pin", pin);
-                cmd.Parameters.AddWithValue("@qr", qrData);
+                cmd.Parameters.AddWithValue("@pinHash", HashMa(pin));
+                cmd.Parameters.AddWithValue("@qrHash", HashMa(qrData));
                 cmd.Parameters.AddWithValue("@hh", hetHan.ToDateTime(TimeOnly.MinValue));
                 await cmd.ExecuteNonQueryAsync();
             }
@@ -338,9 +416,9 @@ public sealed class HopDongRepository
     /// <summary>Thêm mã nhận phòng mới cho hợp đồng (sinh lại QR).</summary>
     public Task<int> ThemMaAsync(int hopDongId, string pin, string qrData, DateOnly? hetHan = null) =>
         _db.ExecuteAsync(
-            @"INSERT INTO ma_nhan_phong (hop_dong_id, pin, qr_data, het_han)
-              VALUES (@h, @pin, @qr, @hh)",
-            new { h = hopDongId, pin = pin, qr = qrData,
+            @"INSERT INTO ma_nhan_phong (hop_dong_id, ma_pin_hash, ma_qr_token_hash, het_han)
+              VALUES (@h, @pinHash, @qrHash, @hh)",
+            new { h = hopDongId, pinHash = HashMa(pin), qrHash = HashMa(qrData),
                   hh = (hetHan ?? DateOnly.FromDateTime(DateTime.Today).AddDays(7)).ToDateTime(TimeOnly.MinValue) });
 
     private static string SinhPin()
@@ -352,4 +430,7 @@ public sealed class HopDongRepository
             for (var i = 0; i < 8; i++) span[i] = (char)('0' + bytes[i] % 10);
         });
     }
+
+    private static string HashMa(string value) =>
+        Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(value)));
 }

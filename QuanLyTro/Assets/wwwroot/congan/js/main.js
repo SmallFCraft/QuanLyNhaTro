@@ -111,11 +111,106 @@ function syncRoomDropdowns() {
   }
 }
 
+// ── Form tra cứu + bảng kết quả (PM-02/03) ─────────────────────────────────────
+// Dùng XUAT_HO_SO_TAM_TRU cho cả tra cứu lẫn xuất: server lọc theo tiêu chí và trả JSON.
+async function searchPolice() {
+  const payload = {
+    cccd: document.getElementById('polCccd')?.value?.trim() || '',
+    hoTen: document.getElementById('polName')?.value?.trim() || '',
+    soDienThoai: document.getElementById('polPhone')?.value?.trim() || '',
+    soPhong: document.getElementById('polRoom')?.value?.trim() || ''
+  };
+  const count = document.getElementById('policeCountText');
+  if (!Object.values(payload).some(v => v)) {
+    renderPoliceResults([]);
+    if (count) count.textContent = 'Nhập ít nhất một tiêu chí để tra cứu';
+    return;
+  }
+  try {
+    const rows = await window.bridge.call('XUAT_HO_SO_TAM_TRU', payload) || [];
+    renderPoliceResults(rows);
+    if (count) count.textContent = `Tìm thấy ${rows.length} bản ghi`;
+  } catch (err) {
+    renderPoliceResults([]);
+    if (count) count.textContent = '';
+    toast(err.message, 'err');
+  }
+}
+
+function renderPoliceResults(rows) {
+  const body = document.getElementById('policeTableBody');
+  if (!body) return;
+  body.innerHTML = (rows || []).map(t => `
+    <tr>
+      <td><b>${esc(t.hoTen)}</b></td>
+      <td class="mono">${esc(t.cccd)}</td>
+      <td class="mono">${esc(t.soDienThoai ?? '')}</td>
+      <td>${esc(t.soPhong ?? '')}</td>
+      <td>${esc(t.tenKhu ?? '')}</td>
+      <td class="num"><span class="tag ${t.daDangKyTamTru ? 'done' : 'warn'}">${t.daDangKyTamTru ? 'Đã đăng ký' : 'Chưa đăng ký'}</span></td>
+    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--dim)">Không tìm thấy bản ghi nào</td></tr>';
+}
+
+async function exportPoliceResults() {
+  try {
+    const payload = {
+      cccd: document.getElementById('polCccd')?.value?.trim() || '',
+      hoTen: document.getElementById('polName')?.value?.trim() || '',
+      soDienThoai: document.getElementById('polPhone')?.value?.trim() || '',
+      soPhong: document.getElementById('polRoom')?.value?.trim() || ''
+    };
+    if (!Object.values(payload).some(v => v)) {
+      toast('Nhập ít nhất một tiêu chí trước khi xuất.', 'info');
+      return;
+    }
+    const csv = await window.bridge.call('XUAT_HO_SO_TAM_TRU', { ...payload, format: 'csv' });
+    if (!csv) { toast('Không có bản ghi nào để xuất.', 'info'); return; }
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `TraCuuCongDan_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    toast('Đã xuất kết quả tra cứu ra file CSV.', 'ok');
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // auth.js điều hướng sang đây kèm ?u=<tên đã encode>.
   const name = new URLSearchParams(window.location.search).get('u');
   if (name) document.getElementById('pname').textContent = name;
   loadPoliceTab('citizens');
+
+  // Sidebar: mỗi mục mở đúng pane/tab thật của shell (trước đây data-police-view không có handler).
+  document.querySelectorAll('.sidebar [data-police-tab]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await loadPoliceTab(btn.dataset.policeTab);
+      if (btn.dataset.policeFilter) {
+        const filter = document.getElementById('p-res-status-filter');
+        if (filter) { filter.value = btn.dataset.policeFilter; filter.dispatchEvent(new Event('change')); }
+      }
+      document.querySelectorAll('.sidebar .nav-btn').forEach(b => b.classList.toggle('active', b === btn));
+      document.querySelector('.sidebar')?.classList.remove('open');
+    });
+  });
+  document.querySelectorAll('.sidebar [data-police-focus]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById(btn.dataset.policeFocus)?.focus();
+      document.querySelectorAll('.sidebar .nav-btn').forEach(b => b.classList.toggle('active', b === btn));
+      document.querySelector('.sidebar')?.classList.remove('open');
+    });
+  });
+  document.getElementById('policeSidebarExport')?.addEventListener('click', () => {
+    if (typeof exportCitizens === 'function') exportCitizens();
+  });
+
+  document.getElementById('policeSearchForm')?.addEventListener('submit', e => {
+    e.preventDefault();
+    searchPolice();
+  });
+  document.getElementById('btnPoliceExportExcel')?.addEventListener('click', exportPoliceResults);
 
   // ponytail: tự động làm mới toàn trang — thay nút sync tay. Reset cache buộc nạp lại từ server.
   startAutoRefresh(() => {

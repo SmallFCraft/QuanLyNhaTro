@@ -46,12 +46,15 @@
             </form>
 
             <div class="login-roles-hint" aria-label="Tài khoản demo">
-              <span class="hint-label">Tài khoản demo</span>
-              <button type="button" class="demo-role-link" data-demo-user="chutro">Chủ trọ</button>
-              <button type="button" class="demo-role-link" data-demo-user="quanly">Quản lý</button>
-              <button type="button" class="demo-role-link" data-demo-user="letan">Lễ tân</button>
-              <button type="button" class="demo-role-link" data-demo-user="nhanvien">Nhân viên</button>
-              <button type="button" class="demo-role-link" data-demo-user="congan">Công an</button>
+              <label class="hint-label" for="demoAccountSelect">Tài khoản demo</label>
+              <select class="input demo-account-select" id="demoAccountSelect">
+                <option value="">Chọn vai trò để điền thông tin…</option>
+                <option value="chutro">♛ Chủ trọ</option>
+                <option value="quanly">♙ Quản lý</option>
+                <option value="letan">▤ Lễ tân</option>
+                <option value="nhanvien">⚒ Nhân viên</option>
+                <option value="congan">⛨ Công an</option>
+              </select>
             </div>
           </div>
 

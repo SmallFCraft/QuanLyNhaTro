@@ -25,8 +25,6 @@ public class DienNuocHoaDonTests
     private int _phong2Id;
     private int _khu2Id;
     private int _phongKhu2Id;
-    private int _qlKhu1Token = 0; // placeholder tránh warning, dùng _tokenQLKhu1
-
     private string _tokenQLKhu1 = null!;
     private string _tokenQLKhu2 = null!;
 

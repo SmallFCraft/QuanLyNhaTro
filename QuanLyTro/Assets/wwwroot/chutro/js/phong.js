@@ -129,10 +129,16 @@ document.addEventListener('keydown', e => {
   if (e.key === 'F2') { e.preventDefault(); editSelectedRoom(); }
 });
 
-function addRoom() {
+async function addRoom() {
+  let khuTros;
+  try {
+    khuTros = await window.bridge.call('KHU_TRO_LAY_TAT_CA', {}) || [];
+  } catch (err) { toast(err.message, 'err'); return; }
+  if (!khuTros.length) { toast('Cần tạo khu trọ trước khi thêm phòng.', 'warn'); return; }
   openModal({
     title: 'Thêm phòng mới',
     fields: [
+      { name: 'khuTroId', label: 'Khu trọ', type: 'select', value: String(khuTros[0].id), options: khuTros.map(k => ({ value: String(k.id), label: k.tenKhuTro })) },
       { name: 'soPhong', label: 'Số phòng', type: 'text', required: true },
       { name: 'giaThue', label: 'Giá thuê (đ)', type: 'number', required: true },
       { name: 'soNguoiToiDa', label: 'Sức chứa', type: 'number', value: '2', required: true },
@@ -140,6 +146,7 @@ function addRoom() {
     ],
     onSubmit: async v => {
       await window.bridge.call('PHONG_THEM', {
+        khuTroId: Number(v.khuTroId),
         soPhong: v.soPhong,
         giaThue: Number(v.giaThue),
         soNguoiToiDa: Number(v.soNguoiToiDa),
@@ -172,7 +179,7 @@ function editRoom(id) {
     ],
     onSubmit: async v => {
       await window.bridge.call('PHONG_CAP_NHAT', {
-        id: r.id,
+        phongId: r.id,
         soPhong: v.soPhong,
         giaThue: Number(v.giaThue),
         soNguoiToiDa: Number(v.soNguoiToiDa),

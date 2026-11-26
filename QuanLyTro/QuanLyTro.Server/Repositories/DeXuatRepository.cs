@@ -1,3 +1,4 @@
+using MySqlConnector;
 using QuanLyTro.Server.Data;
 
 namespace QuanLyTro.Server.Repositories;
@@ -10,11 +11,11 @@ public sealed class DeXuatRepository
     private readonly Database _db;
     public DeXuatRepository(Database db) => _db = db;
 
-    public Task<int> InsertAsync(string loai, string noiDung, int nguoiGuiId, int? khuTroId) =>
+    public Task<int> InsertAsync(string loai, string noiDung, int nguoiGuiId, int? khuTroId, int? doiTuongId = null, string? duLieu = null) =>
         _db.ExecuteAsync(
-            @"INSERT INTO de_xuat (loai, noi_dung, nguoi_gui_id, khu_tro_id)
-              VALUES (@loai, @nd, @ng, @khu)",
-            new { loai, nd = noiDung, ng = nguoiGuiId, khu = (object?)khuTroId ?? DBNull.Value });
+            @"INSERT INTO de_xuat (loai, noi_dung, nguoi_gui_id, khu_tro_id, doi_tuong_id, du_lieu)
+              VALUES (@loai, @nd, @ng, @khu, @dt, @dl)",
+            new { loai, nd = noiDung, ng = nguoiGuiId, khu = (object?)khuTroId ?? DBNull.Value, dt = (object?)doiTuongId ?? DBNull.Value, dl = (object?)duLieu ?? DBNull.Value });
 
     /// <summary>
     /// ChuTro: tất cả; QuanLy: khu mình + của chính mình; vai trò khác: của mình gửi.
@@ -64,6 +65,41 @@ public sealed class DeXuatRepository
             @"UPDATE de_xuat SET trang_thai = @tt, nguoi_duyet_id = @nd,
               phan_hoi = @ph WHERE id = @id AND trang_thai = 'ChoDuyet'",
             new { tt = trangThai, nd = nguoiDuyetId, ph = (object?)phanHoi ?? DBNull.Value, id });
+
+    /// <summary>Đặc tả MOD-04-07: khóa dòng đề xuất trong transaction dùng chung với nghiệp vụ gốc.</summary>
+    public async Task<Dictionary<string, object?>?> GetByIdForUpdateAsync(MySqlConnection conn, MySqlTransaction tx, int id)
+    {
+        await using var cmd = conn.CreateCommand();
+        cmd.Transaction = tx;
+        cmd.CommandText = "SELECT * FROM de_xuat WHERE id = @id FOR UPDATE";
+        cmd.Parameters.AddWithValue("@id", id);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        if (!await reader.ReadAsync()) return null;
+        var row = new Dictionary<string, object?>(reader.FieldCount, StringComparer.Ordinal);
+        for (var i = 0; i < reader.FieldCount; i++)
+            row[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+        return row;
+    }
+
+    public async Task<int> CapNhatTrangThaiAsync(MySqlConnection conn, MySqlTransaction tx,
+        int id, string trangThai, int nguoiDuyetId, string? phanHoi)
+    {
+        await using var cmd = conn.CreateCommand();
+        cmd.Transaction = tx;
+        cmd.CommandText = @"UPDATE de_xuat SET trang_thai = @tt, nguoi_duyet_id = @nd,
+              phan_hoi = @ph WHERE id = @id AND trang_thai = 'ChoDuyet'";
+        cmd.Parameters.AddWithValue("@tt", trangThai);
+        cmd.Parameters.AddWithValue("@nd", nguoiDuyetId);
+        cmd.Parameters.AddWithValue("@ph", (object?)phanHoi ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@id", id);
+        return await cmd.ExecuteNonQueryAsync();
+    }
+
+    public Task<int> DemChoDuyetTrungAsync(string loai, int? doiTuongId) =>
+        doiTuongId is null
+            ? Task.FromResult(0)
+            : _db.ScalarT<int>("SELECT COUNT(*) FROM de_xuat WHERE trang_thai='ChoDuyet' AND loai=@l AND doi_tuong_id=@dt",
+                new { l = loai, dt = doiTuongId });
 
     public Task<int> DemChoDuyetAsync() =>
         _db.ScalarT<int>("SELECT COUNT(*) FROM de_xuat WHERE trang_thai = 'ChoDuyet'");

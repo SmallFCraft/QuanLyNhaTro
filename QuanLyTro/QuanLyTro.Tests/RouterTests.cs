@@ -47,7 +47,7 @@ public class RouterTests
     [TestMethod]
     public async Task LeTan_CallsAccountLock_Denied()
     {
-        var token = (await _sessions.GetAsync((await GetTokenAsync("letan")))).Token;
+        var token = (await _sessions.GetAsync(await GetTokenAsync("letan")))!.Token;
         var resp = await _router.HandleAsync(P(ActionNames.TAI_KHOAN_KHOA, token), new ClientContext("t2"));
         Assert.IsFalse(resp.Success);
     }

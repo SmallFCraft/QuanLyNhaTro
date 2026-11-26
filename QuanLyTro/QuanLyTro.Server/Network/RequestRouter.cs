@@ -56,9 +56,18 @@ public sealed class RequestRouter
         // M4b
         var deXuatRepo = new Repositories.DeXuatRepository(db);
         var suCoRepo = new Repositories.SuCoRepository(db);
-        _deXuat = new DeXuatService(deXuatRepo, roomRepo, tenantRepo);
+        _deXuat = new DeXuatService(deXuatRepo, roomRepo, tenantRepo, new Repositories.HopDongRepository(db));
         _suCo = new SuCoService(suCoRepo, roomRepo, tenantRepo);
         _baoCao = new BaoCaoService(db);
+    }
+
+    private async Task<bool> RoleAllowsAsync(VaiTroNguoiDung role, string action)
+    {
+        if (!DefaultPermissions.IsRegisteredAction(action)) return false;
+        var rows = await _db.QueryAsync("SELECT hanh_dong FROM quyen_vai_tro WHERE vai_tro=@v", new { v = role.ToString() });
+        if (rows.Count > 0) return rows.Any(r => (string)r["hanh_dong"]! == action);
+        var custom = await _db.ScalarT<int>("SELECT COUNT(*) FROM quyen_vai_tro_tuy_chinh WHERE vai_tro=@v", new { v = role.ToString() });
+        return custom > 0 ? false : DefaultPermissions.Allowed(role, action);
     }
 
     public async Task<ResponsePacket> HandleAsync(RequestPacket packet, ClientContext ctx)
@@ -81,8 +90,7 @@ public sealed class RequestRouter
             }
 
             // 3. RBAC: vai trò phải được phép với action (default permissions, chạy mỗi request)
-            if (session is not null &&
-                !DefaultPermissions.Allowed(session.VaiTro, packet.Action))
+            if (session is not null && !await RoleAllowsAsync(session.VaiTro, packet.Action))
                 return Deny(packet.RequestId);
 
             // 4. Dispatch

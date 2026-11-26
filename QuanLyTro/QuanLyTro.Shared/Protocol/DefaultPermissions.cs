@@ -15,6 +15,8 @@ public static class DefaultPermissions
     public static bool Allowed(VaiTroNguoiDung role, string action) =>
         Matrix.TryGetValue(role, out var set) && set.Contains(action);
 
+    public static bool IsRegisteredAction(string action) => AllActions.Contains(action);
+
     public static IReadOnlyCollection<string> ActionsFor(VaiTroNguoiDung role) =>
         Matrix.TryGetValue(role, out var set) ? set.ToArray() : Array.Empty<string>();
 
@@ -42,6 +44,7 @@ public static class DefaultPermissions
         {
             ActionNames.DANG_NHAP, ActionNames.DANG_XUAT, ActionNames.DOI_MAT_KHAU,
             ActionNames.CAU_HINH_LAY,
+            ActionNames.TAI_KHOAN_DAT_LAI_MAT_KHAU,
             ActionNames.KHU_TRO_LAY_TAT_CA,
             ActionNames.PHONG_LAY_TAT_CA, ActionNames.PHONG_LAY_CHI_TIET,
             ActionNames.PHONG_THEM, ActionNames.PHONG_CAP_NHAT,
@@ -50,7 +53,7 @@ public static class DefaultPermissions
             ActionNames.KHACH_THUE_TRA_PHONG, ActionNames.KHACH_THUE_TIM_KIEM,
             ActionNames.KHACH_THUE_LAY_THEO_PHONG,
             // M3: hop dong trong khu duoc gan
-            ActionNames.HopDongTao, ActionNames.HopDongGiaHan, ActionNames.HopDongChamDut,
+            ActionNames.HopDongTao, ActionNames.HopDongGiaHan,
             ActionNames.HopDongLayTatCa, ActionNames.HopDongSinhQr,
             ActionNames.PhuLucLay, ActionNames.PhuLucCapNhat,
             // M4a: dien nuoc + hoa don khu cua minh (scope kiem tra trong service)
@@ -87,6 +90,7 @@ public static class DefaultPermissions
         m[VaiTroNguoiDung.KhachThue] = new HashSet<string>(StringComparer.Ordinal)
         {
             ActionNames.DANG_NHAP, ActionNames.DANG_XUAT, ActionNames.DOI_MAT_KHAU,
+            ActionNames.CAU_HINH_LAY, // đọc cấu hình SePay để vẽ QR thanh toán cho khách
             ActionNames.KHACH_THUE_HO_SO_CUA_TOI, ActionNames.KHACH_THUE_CAP_NHAT_LIEN_HE,
             ActionNames.KHACH_THUE_LAY_THEO_PHONG,
             // M3: nhan phong bang QR/PIN (BR-19) — duy nhat action hop dong cua KhachThue

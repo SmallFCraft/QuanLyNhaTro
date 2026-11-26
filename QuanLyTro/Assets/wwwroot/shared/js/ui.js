@@ -24,13 +24,18 @@ function fmtDateOnly(iso) {
   return s.length === 3 ? `${s[2]}/${s[1]}/${s[0]}` : String(iso);
 }
 
-function toast(msg, kind) {
+function getModalRoot() {
   let root = document.getElementById('modal-root');
   if (!root) {
     root = document.createElement('div');
     root.id = 'modal-root';
     document.body.appendChild(root);
   }
+  return root;
+}
+
+function toast(msg, kind) {
+  const root = getModalRoot();
   const el = document.createElement('div');
   el.className = `toast ${kind || 'info'}`;
   el.textContent = msg;
@@ -58,7 +63,7 @@ function startAutoRefresh(fn, ms = 30000) {
 }
 
 function openModal({ title, fields, onSubmit }) {
-  const root = document.getElementById('modal-root');
+  const root = getModalRoot();
   const back = document.createElement('div');
   back.className = 'modal-back';
   const rows = (fields || []).map(f => {
@@ -112,7 +117,7 @@ function openModal({ title, fields, onSubmit }) {
  * kind: 'info' (mặc định) | 'ok' | 'warn' | 'err' — đổi màu icon + tiêu đề theo theme.
  */
 function alertDialog(msg, title, kind) {
-  const root = document.getElementById('modal-root');
+  const root = getModalRoot();
   if (!root) { toast(msg, kind === 'ok' ? 'ok' : 'err'); return Promise.resolve(); }
   const tone = kind || 'info';
   const icons = { info: 'fa-circle-info', ok: 'fa-circle-check', warn: 'fa-triangle-exclamation', err: 'fa-circle-exclamation' };
@@ -145,7 +150,7 @@ function alertDialog(msg, title, kind) {
 
 /** Hộp thoại xác nhận nội bộ — thay window.confirm. Trả về Promise<boolean>. */
 function confirmDialog(msg, title, kind) {
-  const root = document.getElementById('modal-root');
+  const root = getModalRoot();
   if (!root) return Promise.resolve(false);
   const tone = kind || 'warn';
   const icons = { info: 'fa-circle-info', warn: 'fa-triangle-exclamation', err: 'fa-circle-exclamation' };

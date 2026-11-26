@@ -10,10 +10,15 @@ const LICH_TAG = {
   HoanThanh: ['Hoàn thành', 'pill-gray']
 };
 
+let _activeTab = 'schedule';
+
 function loadLeTanTab(key) {
-  if (key !== 'lich') return;
-  document.getElementById('ptitle').textContent = 'Lịch kiểm tra phòng';
-  napLich();
+  _activeTab = key;
+  document.getElementById('pane-schedule').hidden = key !== 'schedule';
+  document.getElementById('pane-incidents').hidden = key !== 'incidents';
+  document.querySelectorAll('.nav-btn[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === key));
+  if (key === 'schedule') { document.getElementById('ptitle').textContent = 'Lịch kiểm tra phòng'; napLich(); }
+  else if (key === 'incidents') napSuCo();
 }
 
 async function napLich() {
@@ -96,8 +101,22 @@ async function ganNv(id) {
   } catch (err) { toast(err.message, 'err'); }
 }
 
+async function napSuCo() {
+  try {
+    const rows = await window.bridge.call('SU_CO_LAY_THEO_KHU', {}) || [];
+    const el = document.getElementById('incident-body');
+    if (!el) return;
+    el.innerHTML = rows.length
+      ? `<div class="table-wrap"><table class="data-table"><thead><tr><th>Phòng</th><th>Mức độ</th><th>Mô tả</th><th>Trạng thái</th></tr></thead><tbody>${rows.map(s => `<tr><td>${esc(s.soPhong || '—')}</td><td>${esc(s.mucDo || '')}</td><td>${esc(s.moTa || '')}</td><td>${esc(s.trangThai || '')}</td></tr>`).join('')}</tbody></table></div>`
+      : '<p class="helper-text">Chưa có sự cố nào trong khu.</p>';
+  } catch (err) { toast(err.message, 'err'); }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const hoTen = new URLSearchParams(window.location.search).get('u');
   if (hoTen) document.getElementById('pname').textContent = hoTen;
-  loadLeTanTab('lich');
+  document.querySelectorAll('.nav-btn[data-tab]').forEach(b =>
+    b.addEventListener('click', () => loadLeTanTab(b.dataset.tab)));
+  loadLeTanTab('schedule');
+  startAutoRefresh(() => loadLeTanTab(_activeTab), 30000);
 });

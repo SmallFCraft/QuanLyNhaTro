@@ -1,1 +1,91 @@
-/* chutro/chutro.css — Tùy biến riêng cho Shell Chủ trọ Glassmorphism */
+/* quanly.css — màn hình Quản lý khu trọ (giữ nguyên thế giới Chống đen trắng Kính tài chọt theo base.css).
+   Từng rule riêng để shell Quản lý không bị mất CSS khi base.css chỉ gắn style trong .glass-role-compat. */
+body:has(> .screen-view) { height: 100vh; overflow: hidden; }
+.screen-view.active { height: 100%; min-height: 0; }
+.screen-view.active > .app-shell { height: 100%; min-height: 0; }
+.sidebar-brand .brand-left { padding-block: 4px; }
+
+/* Hỗ trợ các legacy pane mà base.css chưa gắn style khi thiếu class glass-role-compat trên body. */
+body.glass-role-compat .shell-main > .legacy-panes {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+body.glass-role-compat .legacy-panes .toolbar,
+body.glass-role-compat .legacy-panes .tblwrap,
+body.glass-role-compat .legacy-panes .tblfoot { background: var(--glass-bg-pure); border-color: var(--border); }
+body.glass-role-compat .legacy-panes .tblwrap { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 12px; }
+body.glass-role-compat .legacy-panes .tbl { width: 100%; border-collapse: collapse; color: var(--text); font-size: 13px; }
+body.glass-role-compat .legacy-panes .tbl th {
+  padding: 11px 12px; background: rgba(255,255,255,.55); color: var(--text-secondary);
+  border-bottom: 1px solid var(--border); font-size: 11.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .35px; white-space: nowrap;
+}
+body.glass-role-compat .legacy-panes .tbl td {
+  padding: 11px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle;
+}
+body.glass-role-compat .legacy-panes .tbl tbody tr:hover,
+body.glass-role-compat .legacy-panes .tbl tbody tr.sel { background: rgba(37,99,235,.08); }
+body.glass-role-compat .legacy-panes .tbl .num { text-align: right; font-variant-numeric: tabular-nums; }
+body.glass-role-compat .legacy-panes .tag {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+body.glass-role-compat .legacy-panes .tag.avail,
+body.glass-role-compat .legacy-panes .tag.done,
+body.glass-role-compat .legacy-panes .tag.paid { background: var(--green-bg); color: var(--green-text); border: 1px solid var(--green-border); }
+body.glass-role-compat .legacy-panes .tag.rent { background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent-border); }
+body.glass-role-compat .legacy-panes .tag.warn,
+body.glass-role-compat .legacy-panes .tag.unpaid { background: var(--amber-bg); color: var(--amber-text); border: 1px solid var(--amber-border); }
+body.glass-role-compat .legacy-panes .tag.bad { background: var(--red-bg); color: var(--red-text); border: 1px solid var(--red-border); }
+body.glass-role-compat .legacy-panes .inp {
+  min-height: 36px; padding: 7px 11px; border: 1px solid var(--glass-border); outline: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text); background: rgba(255,255,255,.72); font: inherit;
+}
+body.glass-role-compat .legacy-panes .btn-outline,
+body.glass-role-compat .legacy-panes .btn-danger {
+  border: 1px solid var(--border-strong); border-radius: 11px; background: rgba(255,255,255,.72);
+  color: var(--text); box-shadow: 0 2px 8px rgba(15,23,42,.04);
+}
+body.glass-role-compat .legacy-panes .btn-outline:hover { background: #fff; }
+body.glass-role-compat .legacy-panes .btn-danger { background: var(--red-bg); color: var(--red-text); border-color: var(--red-border); }
+body.glass-role-compat .legacy-panes .btn:disabled { opacity: .45; cursor: not-allowed; }
+body.glass-role-compat .legacy-panes .fas { display: inline-block; width: 1.1em; text-align: center; font-style: normal; font-family: var(--font-sans); }
+body.glass-role-compat .legacy-panes .fas::before { display: inline-block; }
+body.glass-role-compat .legacy-panes .fa-plus::before,
+body.glass-role-compat .legacy-panes .fa-user-plus::before,
+body.glass-role-compat .legacy-panes .fa-file::before,
+body.glass-role-compat .legacy-panes .fa-file-invoice::before { content: "＋"; }
+body.glass-role-compat .legacy-panes .fa-edit::before { content: "✎"; }
+body.glass-role-compat .legacy-panes .fa-trash::before,
+body.glass-role-compat .legacy-panes .fa-user-slash::before,
+body.glass-role-compat .legacy-panes .fa-user-minus::before { content: "×"; }
+body.glass-role-compat .legacy-panes .fa-check-circle::before,
+body.glass-role-compat .legacy-panes .fa-circle-check::before,
+body.glass-role-compat .legacy-panes .fa-verified::before { content: "✓"; }
+body.glass-role-compat .legacy-panes .fa-exclamation-circle::before,
+body.glass-role-compat .legacy-panes .fa-exclamation-triangle::before,
+body.glass-role-compat .legacy-panes .fa-triangle-exclamation::before { content: "!"; }
+body.glass-role-compat .legacy-panes .fa-key::before { content: "◆"; }
+body.glass-role-compat .legacy-panes .fa-arrows-alt-h::before { content: "↔"; }
+body.glass-role-compat .legacy-panes .fa-sign-out-alt::before { content: "↪"; }
+body.glass-role-compat .legacy-panes .fa-calendar-plus::before { content: "▣"; }
+body.glass-role-compat .legacy-panes .fa-ban::before { content: "⊘"; }
+body.glass-role-compat .legacy-panes .fa-qrcode::before { content: "▦"; }
+body.glass-role-compat .legacy-panes .fa-users::before,
+body.glass-role-compat .legacy-panes .fa-user-check::before { content: "♙"; }
+body.glass-role-compat .legacy-panes .fa-print::before { content: "▤"; }
+body.glass-role-compat .legacy-panes .fa-bolt::before { content: "ϟ"; }
+body.glass-role-compat .legacy-panes .fa-tint::before { content: "◈"; }
+body.glass-role-compat .legacy-panes .fa-save::before,
+body.glass-role-compat .legacy-panes .fa-floppy-disk::before { content: "⬇"; }
+body.glass-role-compat .legacy-panes .fa-hand-holding-usd::before { content: "₫"; }
+body.glass-role-compat .legacy-panes .fa-eye::before { content: "◉"; }
+body.glass-role-compat .legacy-panes .fa-file-csv::before { content: "▤"; }
+body.glass-role-compat .legacy-panes .fa-percent::before { content: "%"; }
+body.glass-role-compat .legacy-panes .fa-chart-bar::before { content: "▥"; }
+body.glass-role-compat .legacy-panes .fa-rotate-left::before,
+body.glass-role-compat .legacy-panes .fa-rotate::before { content: "↶"; }
+body.glass-role-compat .legacy-panes .fa-circle-info::before { content: "ⓘ"; }
+body.glass-role-compat .legacy-panes .fa-building-columns::before { content: "▥"; }

@@ -45,6 +45,11 @@ public sealed class SchemaInitializer
     PRIMARY KEY (vai_tro, hanh_dong)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
 
+        await _db.ExecuteAsync(@"CREATE TABLE IF NOT EXISTS quyen_vai_tro_tuy_chinh (
+    vai_tro VARCHAR(20) NOT NULL PRIMARY KEY,
+    ngay_cap_nhat DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
         await _db.ExecuteAsync(@"CREATE TABLE IF NOT EXISTS khu_tro (
     id INT AUTO_INCREMENT PRIMARY KEY,
     ten_khu_tro VARCHAR(100) NOT NULL,
@@ -125,6 +130,8 @@ public sealed class SchemaInitializer
     tien_coc DECIMAL(12,2) NOT NULL DEFAULT 0,
     trang_thai VARCHAR(20) NOT NULL DEFAULT 'ChoNhanPhong',
     ghi_chu VARCHAR(500) NULL,
+    ly_do_cham_dut VARCHAR(255) NULL,
+    ngay_ban_giao_du_kien DATE NULL,
     ngay_tao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX IX_hop_dong_phong (phong_id),
     INDEX IX_hop_dong_trangthai (trang_thai),
@@ -140,16 +147,32 @@ public sealed class SchemaInitializer
         await _db.ExecuteAsync(@"CREATE TABLE IF NOT EXISTS ma_nhan_phong (
     id INT AUTO_INCREMENT PRIMARY KEY,
     hop_dong_id INT NOT NULL,
-    pin VARCHAR(8) NOT NULL,
-    qr_data VARCHAR(255) NOT NULL,
-    het_han DATE NOT NULL,
+    ma_pin_hash CHAR(64) NULL,
+    ma_qr_token_hash CHAR(64) NULL,
+    het_han DATE NULL,
     da_su_dung TINYINT(1) NOT NULL DEFAULT 0,
     ngay_tao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY UK_mnp_qrdata (qr_data),
+    UNIQUE KEY UK_mnp_pin_hash (ma_pin_hash),
+    UNIQUE KEY UK_mnp_qr_hash (ma_qr_token_hash),
     INDEX IX_mnp_hopdong (hop_dong_id),
-    CONSTRAINT FK_mnp_hd FOREIGN KEY (hop_dong_id) REFERENCES hop_dong(id),
-    CONSTRAINT CK_mnp_pin CHECK (pin REGEXP '^[0-9]{8}$')
+    CONSTRAINT FK_mnp_hd FOREIGN KEY (hop_dong_id) REFERENCES hop_dong(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
+        await _db.ExecuteAsync(@"SET @col_exists = (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='ma_nhan_phong' AND column_name='ma_pin_hash');
+SET @sql = IF(@col_exists=0,
+ 'ALTER TABLE ma_nhan_phong ADD COLUMN ma_pin_hash CHAR(64) NULL, ADD COLUMN ma_qr_token_hash CHAR(64) NULL',
+ 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='ma_nhan_phong' AND column_name='pin');
+SET @sql = IF(@col_exists>0,
+ 'UPDATE ma_nhan_phong SET ma_pin_hash=SHA2(pin,256), ma_qr_token_hash=SHA2(qr_data,256) WHERE ma_pin_hash IS NULL AND da_su_dung=0',
+ 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='ma_nhan_phong' AND column_name='pin');
+SET @sql = IF(@col_exists>0,
+ 'ALTER TABLE ma_nhan_phong DROP INDEX UK_mnp_qrdata, DROP COLUMN pin, DROP COLUMN qr_data',
+ 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;" );
 
         // M3: phụ lục hợp đồng (gia hạn / sửa giá / thêm người / trả phòng sớm)
         await _db.ExecuteAsync(@"CREATE TABLE IF NOT EXISTS phu_luc_hop_dong (
@@ -251,6 +274,8 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;");
     noi_dung VARCHAR(1000) NOT NULL,
     nguoi_gui_id INT NOT NULL,
     khu_tro_id INT NULL,
+    doi_tuong_id INT NULL,
+    du_lieu JSON NULL,
     trang_thai ENUM('ChoDuyet','DaDuyet','TuChoi') NOT NULL DEFAULT 'ChoDuyet',
     nguoi_duyet_id INT NULL,
     phan_hoi VARCHAR(500) NULL,
@@ -279,5 +304,20 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;");
     INDEX idx_sc_tt (trang_thai),
     INDEX idx_sc_phong (phong_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
+        // Migration cho DB cũ: thêm cột đặc tả chấm dứt + đối tượng đề xuất nếu chưa có
+        await _db.ExecuteAsync(@"SET @col_exists = (SELECT COUNT(*) FROM information_schema.columns
+    WHERE table_schema = DATABASE() AND table_name = 'hop_dong' AND column_name = 'ly_do_cham_dut');
+SET @sql = IF(@col_exists = 0,
+    'ALTER TABLE hop_dong ADD COLUMN ly_do_cham_dut VARCHAR(255) NULL, ADD COLUMN ngay_ban_giao_du_kien DATE NULL',
+    'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;");
+
+        await _db.ExecuteAsync(@"SET @col_exists = (SELECT COUNT(*) FROM information_schema.columns
+    WHERE table_schema = DATABASE() AND table_name = 'de_xuat' AND column_name = 'doi_tuong_id');
+SET @sql = IF(@col_exists = 0,
+    'ALTER TABLE de_xuat ADD COLUMN doi_tuong_id INT NULL, ADD COLUMN du_lieu JSON NULL',
+    'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;");
     }
 }

@@ -85,6 +85,9 @@ public sealed class AccountService
         var vaiTro = GetString(data, "vaiTro") ?? throw new ValidationException("Thiếu vai trò.");
         if (!Enum.TryParse<VaiTroNguoiDung>(vaiTro, out var role))
             throw new ValidationException("Vai trò không hợp lệ.");
+        // MOD-02-04: KhachThue chỉ tự đăng ký qua action public, không phải qua quản trị tài khoản
+        if (role == VaiTroNguoiDung.KhachThue)
+            throw new ValidationException("Khách thuê chỉ được tạo qua đăng ký công khai.");
         var khuTroId = GetOptionalInt(data, "khuTroId");
         var chuyenMon = GetString(data, "chuyenMon");
 
@@ -110,12 +113,42 @@ public sealed class AccountService
     public async Task<object> UpdateAsync(SessionInfo session, JsonElement data)
     {
         var id = GetInt(data, "taiKhoanId");
+        var existing = (await _db.QueryAsync("SELECT vai_tro, khu_tro_id, chuyen_mon, bi_khoa FROM tai_khoan WHERE id=@id", new { id })).SingleOrDefault()
+            ?? throw new NotFoundOrDeniedException();
+        var vaiTro = GetString(data, "vaiTro") ?? (string)existing["vai_tro"]!;
+        if (!Enum.TryParse<VaiTroNguoiDung>(vaiTro, out _)) throw new ValidationException("Vai trò không hợp lệ.");
+        var khuTroId = data.TryGetProperty("khuTroId", out var khuEl)
+            ? khuEl.ValueKind == JsonValueKind.Null ? null : GetOptionalInt(data, "khuTroId")
+            : existing["khu_tro_id"] is null or DBNull ? null : Convert.ToInt32(existing["khu_tro_id"]);
+        var chuyenMon = GetString(data, "chuyenMon") ?? (string?)existing["chuyen_mon"];
+        if (vaiTro == VaiTroNguoiDung.ChuTro.ToString() &&
+            (string)existing["vai_tro"]! != VaiTroNguoiDung.ChuTro.ToString())
+            throw new ValidationException("Không thể cấp vai trò ChuTro cho tài khoản khác.");
+        if (vaiTro != (string)existing["vai_tro"]!)
+        {
+            if (!data.TryGetProperty("khuTroId", out _) && vaiTro != VaiTroNguoiDung.QuanLy.ToString()) khuTroId = null;
+            if (!data.TryGetProperty("chuyenMon", out _) && vaiTro != VaiTroNguoiDung.NhanVien.ToString()) chuyenMon = null;
+        }
+        if (vaiTro != VaiTroNguoiDung.QuanLy.ToString() && khuTroId is not null)
+            throw new ValidationException("Chỉ vai trò QuanLy mới được gán khu trọ.");
+        if (vaiTro != VaiTroNguoiDung.NhanVien.ToString() && chuyenMon is not null)
+            throw new ValidationException("Chỉ vai trò NhanVien mới có chuyên môn.");
+        if (khuTroId is not null && await _db.ScalarT<int>("SELECT COUNT(*) FROM khu_tro WHERE id=@id", new { id = khuTroId }) == 0)
+            throw new ValidationException("Khu trọ không tồn tại.");
         var hoTen = GetString(data, "hoTen");
-        if (id == session.TaiKhoanId && hoTen is null)
-            throw new ValidationException("Thiếu thông tin cập nhật.");
-        await _db.ExecuteAsync(
-            "UPDATE tai_khoan SET ho_ten = COALESCE(@n, ho_ten), ngay_cap_nhat = NOW() WHERE id = @id",
-            new { n = hoTen, id });
+        var biKhoa = data.TryGetProperty("biKhoa", out var lockEl) && lockEl.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? lockEl.GetBoolean() : Convert.ToInt32(existing["bi_khoa"]) == 1;
+        var lyDoKhoa = GetString(data, "lyDoKhoa");
+        if (biKhoa && string.IsNullOrWhiteSpace(lyDoKhoa) && Convert.ToInt32(existing["bi_khoa"]) == 0)
+            throw new ValidationException("Thiếu lý do khóa tài khoản.");
+        if (!biKhoa) lyDoKhoa = null;
+        if (id == session.TaiKhoanId && biKhoa)
+            throw new BusinessRuleException("Không thể tự khóa tài khoản của chính mình.");
+        var affected = await _db.ExecuteAsync(
+            @"UPDATE tai_khoan SET ho_ten=COALESCE(@n,ho_ten), vai_tro=@v, khu_tro_id=@k,
+              chuyen_mon=@c, bi_khoa=@b, ly_do_khoa=@l, ngay_cap_nhat=NOW() WHERE id=@id",
+            new { n = hoTen, v = vaiTro, k = khuTroId, c = chuyenMon, b = biKhoa ? 1 : 0, l = lyDoKhoa, id });
+        if (affected == 0) throw new NotFoundOrDeniedException();
         return new { ok = true };
     }
 
@@ -165,7 +198,7 @@ public sealed class AccountService
             var n = await _db.ExecuteAsync("DELETE FROM tai_khoan WHERE ten_dang_nhap = @u", new { u = tenDangNhap });
             if (n == 0) throw new NotFoundOrDeniedException();
         }
-        catch (MySqlConnector.MySqlException) when (true)
+        catch (MySqlConnector.MySqlException)
         {
             throw new BusinessRuleException("Không thể xóa: tài khoản còn dữ liệu liên quan. Dùng khóa tài khoản thay thế.");
         }
@@ -178,7 +211,11 @@ public sealed class AccountService
     {
         var seeded = await _db.QueryAsync("SELECT vai_tro, hanh_dong FROM quyen_vai_tro");
         var effective = seeded.Select(r => new { vaiTro = (string)r["vai_tro"]!, hanhDong = (string)r["hanh_dong"]! })
-            .ToArray();
+            .ToList();
+        var customized = await _db.QueryAsync("SELECT vai_tro FROM quyen_vai_tro_tuy_chinh");
+        var customizedRoles = customized.Select(r => (string)r["vai_tro"]!).ToHashSet(StringComparer.Ordinal);
+        foreach (var role in customizedRoles)
+            if (!effective.Any(e => e.vaiTro == role)) effective.Add(new { vaiTro = role, hanhDong = "" });
         var macDinh = Enum.GetValues<VaiTroNguoiDung>()
             .Select(v => new
             {
@@ -187,7 +224,7 @@ public sealed class AccountService
             })
             .Where(x => x.hanhDong.Length > 0)
             .ToArray();
-        return new { macDinh, hieuLuc = effective };
+        return new { macDinh, hieuLuc = effective, vaiTroTuyChinh = customizedRoles };
     }
 
     public async Task<object> UpdateRolePermissionsAsync(SessionInfo session, JsonElement data)
@@ -195,21 +232,24 @@ public sealed class AccountService
         var vaiTro = GetString(data, "vaiTro") ?? throw new ValidationException("Thiếu vai trò.");
         if (!Enum.TryParse<VaiTroNguoiDung>(vaiTro, out _))
             throw new ValidationException("Vai trò không hợp lệ.");
-        if (data.TryGetProperty("thuHoi", out var revokeEl) && revokeEl.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var a in revokeEl.EnumerateArray())
-            {
-                var action = a.GetString();
-                if (string.IsNullOrEmpty(action)) continue;
-                // Không cho thu hồi quyền nền của ChuTro (vẫn đăng nhập/quản trị được)
-                if (vaiTro == VaiTroNguoiDung.ChuTro.ToString() &&
-                    (action == ActionNames.DANG_NHAP || action == ActionNames.PHAN_QUYEN_CAP_NHAT_VAI_TRO))
-                    throw new BusinessRuleException("Không thể thu hồi quyền nền của Chủ trọ.");
+        var revocations = data.TryGetProperty("thuHoi", out var revokeEl) && revokeEl.ValueKind == JsonValueKind.Array
+            ? revokeEl.EnumerateArray().Select(a => a.GetString()).Where(a => !string.IsNullOrEmpty(a)).ToArray()
+            : Array.Empty<string?>();
+        // Validate the protected role before persisting its customized marker.
+        if (vaiTro == VaiTroNguoiDung.ChuTro.ToString() &&
+            revocations.Any(action => action == ActionNames.DANG_NHAP || action == ActionNames.PHAN_QUYEN_CAP_NHAT_VAI_TRO))
+            throw new BusinessRuleException("Không thể thu hồi quyền nền của Chủ trọ.");
+        if (await _db.ScalarT<int>("SELECT COUNT(*) FROM quyen_vai_tro_tuy_chinh WHERE vai_tro=@v", new { v = vaiTro }) == 0 &&
+            await _db.ScalarT<int>("SELECT COUNT(*) FROM quyen_vai_tro WHERE vai_tro=@v", new { v = vaiTro }) == 0)
+            foreach (var action in DefaultPermissions.ActionsFor(Enum.Parse<VaiTroNguoiDung>(vaiTro)))
                 await _db.ExecuteAsync(
-                    "DELETE FROM quyen_vai_tro WHERE vai_tro = @v AND hanh_dong = @a",
+                    "INSERT IGNORE INTO quyen_vai_tro (vai_tro, hanh_dong) VALUES (@v, @a)",
                     new { v = vaiTro, a = action });
-            }
-        }
+        await _db.ExecuteAsync("INSERT INTO quyen_vai_tro_tuy_chinh (vai_tro) VALUES (@v) ON DUPLICATE KEY UPDATE ngay_cap_nhat=NOW()", new { v = vaiTro });
+        foreach (var action in revocations)
+            await _db.ExecuteAsync(
+                "DELETE FROM quyen_vai_tro WHERE vai_tro = @v AND hanh_dong = @a",
+                new { v = vaiTro, a = action });
         if (data.TryGetProperty("capQuyen", out var grantEl) && grantEl.ValueKind == JsonValueKind.Array)
         {
             foreach (var a in grantEl.EnumerateArray())
@@ -238,6 +278,7 @@ public sealed class AccountService
             mauQr = r?["mau_qr"] as string,
             // api_token chỉ trả cho CAU_HINH_DAY_DU của ChuTro (router đã chặn vai trò khác)
             apiToken = withSecret && session.VaiTro == VaiTroNguoiDung.ChuTro ? r?["api_token"] as string : null,
+            coApiToken = withSecret && session.VaiTro == VaiTroNguoiDung.ChuTro && !string.IsNullOrEmpty(r?["api_token"] as string),
         };
     }
 
@@ -245,7 +286,8 @@ public sealed class AccountService
     {
         await _db.ExecuteAsync(@"INSERT INTO cau_hinh_he_thong (id, so_tai_khoan, ten_ngan_hang, chu_tai_khoan, mau_qr, api_token, ngay_cap_nhat)
             VALUES (1, @s, @n, @c, @q, @t, NOW())
-            ON DUPLICATE KEY UPDATE so_tai_khoan=@s, ten_ngan_hang=@n, chu_tai_khoan=@c, mau_qr=@q, api_token=@t, ngay_cap_nhat=NOW()",
+            ON DUPLICATE KEY UPDATE so_tai_khoan=@s, ten_ngan_hang=@n, chu_tai_khoan=@c, mau_qr=@q,
+                api_token=IF(@keepToken, api_token, @t), ngay_cap_nhat=NOW()",
             new
             {
                 s = GetString(data, "soTaiKhoan"),
@@ -253,6 +295,7 @@ public sealed class AccountService
                 c = GetString(data, "chuTaiKhoan"),
                 q = GetString(data, "mauQr"),
                 t = GetString(data, "apiToken"),
+                keepToken = !data.TryGetProperty("apiToken", out _),
             });
         return new { ok = true };
     }

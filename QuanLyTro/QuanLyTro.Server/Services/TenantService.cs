@@ -24,7 +24,7 @@ public sealed class TenantService
         _sites = sites;
     }
 
-    public async Task<object> RegisterAsync(JsonElement data)
+    public async Task<object> RegisterAsync(JsonElement data, SessionInfo? session = null)
     {
         var tenDangNhap = AccountService.GetString(data, "tenDangNhap") ?? throw new ValidationException("Thiếu tên đăng nhập.");
         var matKhau = AccountService.GetString(data, "matKhau") ?? throw new ValidationException("Thiếu mật khẩu.");
@@ -34,6 +34,18 @@ public sealed class TenantService
         var soDienThoai = AccountService.GetString(data, "soDienThoai") ?? throw new ValidationException("Thiếu số điện thoại.");
         var queQuan = AccountService.GetString(data, "queQuan") ?? throw new ValidationException("Thiếu quê quán.");
         var noiLamViec = AccountService.GetString(data, "noiLamViec");
+        int? phongId = session is not null && data.TryGetProperty("phongId", out var p) && p.ValueKind == JsonValueKind.Number && p.TryGetInt32(out var roomId) && roomId > 0
+            ? roomId : null;
+        bool daDangKyTamTru = session is not null && data.TryGetProperty("daDangKyTamTru", out var tt) && tt.ValueKind == JsonValueKind.True;
+        if (string.IsNullOrWhiteSpace(tenDangNhap) || string.IsNullOrWhiteSpace(hoTen) || string.IsNullOrWhiteSpace(queQuan))
+            throw new ValidationException("Tên đăng nhập, họ tên và quê quán không được rỗng.");
+        if (phongId is not null)
+        {
+            var room = await _rooms.RoomByIdAsync(phongId.Value) ?? throw new NotFoundOrDeniedException();
+            if (session?.VaiTro == VaiTroNguoiDung.QuanLy && session.KhuTroId != Convert.ToInt32(room["khu_tro_id"]))
+                throw new NotFoundOrDeniedException();
+            if ((string)room["trang_thai"]! == "BaoTri") throw new BusinessRuleException("Phòng đang bảo trì, không thể gán khách.");
+        }
 
         if (matKhau.Length < 6) throw new ValidationException("Mật khẩu phải có ít nhất 6 ký tự.");
         if (cccd.Length != 12 || !cccd.All(char.IsAsciiDigit))
@@ -50,7 +62,8 @@ public sealed class TenantService
         if (hs > 0) throw new ValidationException("Số CCCD đã được đăng ký.");
 
         var id = await _repo.RegisterAsync(tenDangNhap, PasswordHasher.Hash(matKhau), hoTen.Trim(),
-            cccd, ngaySinh, soDienThoai, queQuan.Trim(), noiLamViec);
+            cccd, ngaySinh, soDienThoai, queQuan.Trim(), noiLamViec, phongId, daDangKyTamTru,
+            session is not null && session.VaiTro is VaiTroNguoiDung.ChuTro or VaiTroNguoiDung.QuanLy ? session.TaiKhoanId : null);
         return new { taiKhoanId = id };
     }
 
@@ -61,7 +74,7 @@ public sealed class TenantService
         if (session.VaiTro is not (VaiTroNguoiDung.ChuTro or VaiTroNguoiDung.QuanLy))
             throw new NotFoundOrDeniedException();
         // đăng ký giống public nhưng do quản lý thao tác
-        return await RegisterAsync(data);
+        return await RegisterAsync(data, session);
     }
 
     public async Task<object> UpdateAsync(SessionInfo session, JsonElement data)
@@ -70,9 +83,48 @@ public sealed class TenantService
             throw new NotFoundOrDeniedException();
         var id = AccountService.GetInt(data, "taiKhoanId");
         await RequireScopeAsync(session, id);
-        var hoTen = AccountService.GetString(data, "hoTen");
-        if (hoTen is not null)
-            await _repo.UpdateHoTenAsync(id, hoTen);
+        var hoTen = AccountService.GetString(data, "hoTen")?.Trim() ?? throw new ValidationException("Thiếu họ tên.");
+        var cccd = AccountService.GetString(data, "cccd") ?? throw new ValidationException("Thiếu CCCD.");
+        var ngaySinhText = AccountService.GetString(data, "ngaySinh") ?? throw new ValidationException("Thiếu ngày sinh.");
+        var sdt = AccountService.GetString(data, "soDienThoai") ?? throw new ValidationException("Thiếu số điện thoại.");
+        var queQuan = AccountService.GetString(data, "queQuan")?.Trim() ?? throw new ValidationException("Thiếu quê quán.");
+        var noiLamViec = AccountService.GetString(data, "noiLamViec");
+        if (string.IsNullOrWhiteSpace(hoTen) || string.IsNullOrWhiteSpace(queQuan))
+            throw new ValidationException("Họ tên và quê quán không được rỗng.");
+        if (cccd.Length != 12 || !cccd.All(char.IsAsciiDigit))
+            throw new ValidationException("CCCD phải gồm đúng 12 chữ số.");
+        if (!DateOnly.TryParse(ngaySinhText, out var ngaySinh) || ngaySinh >= DateOnly.FromDateTime(DateTime.Today))
+            throw new ValidationException("Ngày sinh phải là ngày trong quá khứ.");
+        if (sdt.Length < 9 || sdt.Length > 15 || !sdt.All(c => char.IsAsciiDigit(c) || c == '+'))
+            throw new ValidationException("Số điện thoại không hợp lệ.");
+        if (await _repo.ScalarCountAsync("SELECT COUNT(*) FROM ho_so_khach_thue WHERE cccd=@c AND tai_khoan_id<>@id", new { c = cccd, id }) > 0)
+            throw new ValidationException("Số CCCD đã được đăng ký.");
+        bool? tamTru = data.TryGetProperty("daDangKyTamTru", out var tt) && tt.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? tt.GetBoolean() : null;
+        int? phongId = data.TryGetProperty("phongId", out var p) && p.ValueKind == JsonValueKind.Number && p.TryGetInt32(out var roomId) && roomId > 0
+            ? roomId : null;
+        var current = await _repo.ProfileAsync(id) ?? throw new NotFoundOrDeniedException();
+        int? currentRoom = current["phong_id"] is null or DBNull ? null : Convert.ToInt32(current["phong_id"]);
+        if (phongId is not null && phongId != currentRoom)
+        {
+            var room = await _rooms.RoomByIdAsync(phongId.Value) ?? throw new NotFoundOrDeniedException();
+            if (session.VaiTro == VaiTroNguoiDung.QuanLy && session.KhuTroId != Convert.ToInt32(room["khu_tro_id"]))
+                throw new NotFoundOrDeniedException();
+            if ((string)room["trang_thai"]! == "BaoTri")
+                throw new BusinessRuleException("Phòng đang bảo trì, không thể gán khách.");
+        }
+        var resetPassword = AccountService.GetString(data, "matKhauMoi");
+        if (resetPassword is not null)
+        {
+            if (session.VaiTro != VaiTroNguoiDung.ChuTro)
+                throw new NotFoundOrDeniedException();
+            if (resetPassword.Length < 6)
+                throw new ValidationException("Mật khẩu mới phải có ít nhất 6 ký tự.");
+        }
+        await _repo.UpdateProfileAsync(id, hoTen, cccd, ngaySinh, sdt, queQuan, noiLamViec, tamTru,
+            phongId == currentRoom ? null : phongId, session.TaiKhoanId,
+            resetPassword is null ? null : PasswordHasher.Hash(resetPassword),
+            session.VaiTro == VaiTroNguoiDung.QuanLy ? session.KhuTroId : null);
         return new { ok = true };
     }
 
@@ -139,14 +191,18 @@ public sealed class TenantService
         // Escape LIKE wildcard để '%' không biến thành bộ lọc toàn bộ
         var escaped = keyword
             .Replace("!", "!!").Replace("%", "!%").Replace("_", "!_").Replace("[", "![");
-        var rows = await _repo.SearchAsync(escaped, limit: 50);
+        var rows = await _repo.SearchAsync(escaped, limit: 50,
+            session.VaiTro == VaiTroNguoiDung.QuanLy ? session.KhuTroId : null);
         return rows.Select(r => new
         {
             id = Convert.ToInt32(r["id"]),
             hoTen = (string)r["ho_ten"]!,
             tenDangNhap = (string)r["ten_dang_nhap"]!,
             cccd = (string)r["cccd"]!,
+            ngaySinh = Convert.ToDateTime(r["ngay_sinh"]!).ToString("yyyy-MM-dd"),
             soDienThoai = (string)r["so_dien_thoai"]!,
+            queQuan = (string)r["que_quan"]!,
+            noiLamViec = r["noi_lam_viec"] as string,
             phongId = r["phong_id"] is null or DBNull ? (int?)null : Convert.ToInt32(r["phong_id"]),
             daDangKyTamTru = Convert.ToInt32(r["da_dang_ky_tam_tru"]) == 1,
         }).ToArray();
@@ -180,9 +236,9 @@ public sealed class TenantService
         {
             var mine = await _repo.ProfileAsync(session.TaiKhoanId);
             int? myPhong = mine?["phong_id"] is null or DBNull ? (int?)null : Convert.ToInt32(mine["phong_id"]);
-            if (myPhong != phongId) throw new NotFoundOrDeniedException();
+            if (myPhong != (phongId == 0 ? null : phongId)) throw new NotFoundOrDeniedException();
         }
-        else if (session.VaiTro == VaiTroNguoiDung.QuanLy)
+        else if (session.VaiTro == VaiTroNguoiDung.QuanLy && phongId != 0)
         {
             var phong = await _rooms.RoomByIdAsync(phongId) ?? throw new NotFoundOrDeniedException();
             if (session.KhuTroId != Convert.ToInt32(phong["khu_tro_id"]))
@@ -192,9 +248,14 @@ public sealed class TenantService
         return rows.Select(r => new
         {
             id = Convert.ToInt32(r["id"]),
+            tenDangNhap = (string)r["ten_dang_nhap"]!,
             hoTen = (string)r["ho_ten"]!,
             cccd = (string)r["cccd"]!,
+            ngaySinh = Convert.ToDateTime(r["ngay_sinh"]!).ToString("yyyy-MM-dd"),
             soDienThoai = (string)r["so_dien_thoai"]!,
+            queQuan = (string)r["que_quan"]!,
+            noiLamViec = r["noi_lam_viec"] as string,
+            phongId = r["phong_id"] is null or DBNull ? (int?)null : Convert.ToInt32(r["phong_id"]),
             daDangKyTamTru = Convert.ToInt32(r["da_dang_ky_tam_tru"]) == 1,
         }).ToArray();
     }

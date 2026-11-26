@@ -8,10 +8,15 @@ const VIEC_TAG = {
   TuChoi:    ['Đã hủy', 'pill-red']
 };
 
+let _activeTab = 'tasks';
+
 function loadNhanVienTab(key) {
-  if (key !== 'viec') return;
-  document.getElementById('ptitle').textContent = 'Việc được giao';
-  napViec();
+  _activeTab = key;
+  document.getElementById('pane-tasks').hidden = key !== 'tasks';
+  document.getElementById('pane-incidents').hidden = key !== 'incidents';
+  document.querySelectorAll('.nav-btn[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === key));
+  if (key === 'tasks') { document.getElementById('ptitle').textContent = 'Việc được giao'; napViec(); }
+  else if (key === 'incidents') napSuCo();
 }
 
 async function napViec() {
@@ -82,8 +87,38 @@ async function hoanThanhViec(id) {
   });
 }
 
+async function napSuCo() {
+  try {
+    const rows = await window.bridge.call('SU_CO_LAY_THEO_KHU', {}) || [];
+    const el = document.getElementById('incident-body');
+    if (!el) return;
+    el.innerHTML = rows.length
+      ? `<div class="table-wrap"><table class="data-table"><thead><tr><th>Phòng</th><th>Mức độ</th><th>Mô tả</th><th>Trạng thái</th></tr></thead><tbody>${rows.map(s => `<tr><td>${esc(s.soPhong || '—')}</td><td>${esc(s.mucDo || '')}</td><td>${esc(s.moTa || '')}</td><td>${esc(s.trangThai || '')}</td></tr>`).join('')}</tbody></table></div>`
+      : '<p class="helper-text">Bạn chưa gửi sự cố nào.</p>';
+  } catch (err) { toast(err.message, 'err'); }
+}
+
+function openStaffIssueModal() {
+  openModal({
+    title: 'Báo sự cố khu trọ',
+    fields: [
+      { name: 'mucDo', label: 'Mức độ', type: 'select', options: [{ value: 'Thap', label: 'Thấp' }, { value: 'TrungBinh', label: 'Trung bình' }, { value: 'Cao', label: 'Cao' }, { value: 'KhanCap', label: 'Khẩn cấp' }], value: 'TrungBinh' },
+      { name: 'moTa', label: 'Mô tả sự cố', type: 'textarea', required: true, placeholder: 'VD: hành lang bị hư đèn, cống thoát nước tắc...' }
+    ],
+    onSubmit: async v => {
+      await window.bridge.call('SU_CO_TAO', { mucDo: v.mucDo, moTa: v.moTa });
+      toast('Đã gửi báo cáo sự cố.', 'ok');
+      await napSuCo();
+    }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const hoTen = new URLSearchParams(window.location.search).get('u');
   if (hoTen) document.getElementById('pname').textContent = hoTen;
-  loadNhanVienTab('viec');
+  document.getElementById('btnStaffReportIssue')?.addEventListener('click', openStaffIssueModal);
+  document.querySelectorAll('.nav-btn[data-tab]').forEach(b =>
+    b.addEventListener('click', () => loadNhanVienTab(b.dataset.tab)));
+  loadNhanVienTab('tasks');
+  startAutoRefresh(() => loadNhanVienTab(_activeTab), 30000);
 });

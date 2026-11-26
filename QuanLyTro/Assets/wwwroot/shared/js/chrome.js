@@ -36,9 +36,26 @@
     const gotoBtn = e.target.closest('[data-goto]');
     if (gotoBtn) {
       const id = gotoBtn.dataset.goto;
-      if (id === 's01') { global.QuanLyTroBridge.invoke('DANG_XUAT').catch(() => location.reload()); return; }
-      document.querySelectorAll('.screen-view').forEach(s => s.classList.toggle('active', s.id === id));
-      document.querySelectorAll('.nav-btn[data-goto]').forEach(b => b.classList.toggle('active', b.dataset.goto === id));
+      if (id === 's01') {
+        // Đăng xuất phải rời shell ngay, không chờ mạng: postMessage đã được xếp hàng cho host.
+        global.QuanLyTroBridge.invoke('DANG_XUAT').catch(() => {});
+        global.location.href = '../auth/index.html';
+        return;
+      }
+      if (id === 's02' && typeof global.loadLandlordTab === 'function') {
+        global.loadLandlordTab('dash');
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b === gotoBtn));
+      } else {
+        document.querySelectorAll('.screen-view').forEach(s => s.classList.toggle('active', s.id === id));
+        document.querySelectorAll('.nav-btn[data-goto]').forEach(b => b.classList.toggle('active', b.dataset.goto === id));
+      }
+      closeAllDrawers();
+      return;
+    }
+    const tabBtn = e.target.closest('[data-tab]');
+    if (tabBtn && typeof global.loadLandlordTab === 'function') {
+      global.loadLandlordTab(tabBtn.dataset.tab);
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b === tabBtn));
       closeAllDrawers();
       return;
     }
@@ -61,7 +78,8 @@
     Cccd: 'cccd', SoDienThoai: 'soDienThoai', QueQuan: 'queQuan', NoiLamViec: 'noiLamViec',
     KhuTroId: 'khuTroId', SoPhong: 'soPhong', GiaThue: 'giaThue', SoNguoiToiDa: 'soNguoiToiDa',
     TrangThai: 'trangThai', GhiChu: 'ghiChu', TuKhoa: 'tuKhoa', PhongId: 'phongId',
-    LyDo: 'lyDo', TaiKhoanId: 'taiKhoanId', VaiTro: 'vaiTro', BienNhan: 'bienNhan'
+    LyDo: 'lyDo', TaiKhoanId: 'taiKhoanId', VaiTro: 'vaiTro', BienNhan: 'bienNhan',
+    ThuHoi: 'thuHoi', CapQuyen: 'capQuyen'
   };
   function mapKeys(obj) {
     if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;

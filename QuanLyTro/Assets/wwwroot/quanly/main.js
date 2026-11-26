@@ -76,6 +76,98 @@ document.addEventListener('DOMContentLoaded', async () => {
     return `<span class="pill ${cls}">${esc(label)}</span>`;
   }
 
+
+  // ── Màn Phòng khu tôi / Người thuê: dùng dữ liệu server, không còn bảng mẫu cứng ──
+  let managerRooms = [];
+  async function renderManagerRooms() {
+    const body = document.getElementById('phong-body');
+    if (!body) return;
+    try {
+      managerRooms = await window.bridge.call('PHONG_LAY_TAT_CA', {}) || [];
+      const q = (document.getElementById('room-search')?.value || '').toLowerCase().trim();
+      const filter = document.getElementById('room-trang_thai')?.value || '';
+      const rows = managerRooms.filter(r => {
+        const st = r.trangThai ?? r.trang_thai;
+        return (!q || String(r.soPhong ?? r.so_phong ?? '').toLowerCase().includes(q)) && (!filter || st === filter);
+      });
+      body.innerHTML = rows.map(r => {
+        const st = r.trangThai ?? r.trang_thai;
+        const label = st === 'DaThue' ? 'Đang thuê' : st === 'BaoTri' ? 'Bảo trì' : 'Phòng trống';
+        const cls = st === 'DaThue' ? 'rent' : st === 'BaoTri' ? 'warn' : 'avail';
+        return `<tr data-id="${Number(r.id)}" onclick="this.parentNode.querySelectorAll('tr').forEach(x=>x.classList.remove('sel'));this.classList.add('sel')">
+          <td><b>${esc(r.soPhong ?? r.so_phong ?? '')}</b></td>
+          <td class="num">${fmtMoney(r.giaThue ?? r.gia_thue)}</td>
+          <td class="num">${esc(r.soNguoiToiDa ?? r.so_nguoi_toi_da ?? '')}</td>
+          <td class="num">${esc(r.soNguoiHienTai ?? 0)}/${esc(r.soNguoiToiDa ?? '')}</td>
+          <td><span class="tag ${cls}">${label}</span></td>
+          <td>${esc(r.moTa ?? r.mo_ta ?? '')}</td>
+          <td><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();editSelectedManagerRoom()"><i class="fas fa-edit"></i></button></td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="7">Chưa có phòng nào trong khu được gán.</td></tr>';
+      const count = document.getElementById('phong-count');
+      if (count) count.textContent = `Tổng: ${rows.length} bản ghi`;
+    } catch (e) { body.innerHTML = `<tr><td colspan="7">${esc(e.message)}</td></tr>`; }
+  }
+
+  function editSelectedManagerRoom() {
+    const tr = document.querySelector('#phong-body tr.sel');
+    const room = managerRooms.find(r => Number(r.id) === Number(tr?.dataset.id));
+    if (!room) { UIChrome.showToast('Vui lòng chọn một phòng.'); return; }
+    openModal({
+      title: 'Sửa phòng ' + (room.soPhong ?? room.so_phong),
+      fields: [
+        { name: 'soPhong', label: 'Số phòng', type: 'text', value: room.soPhong ?? room.so_phong ?? '', required: true },
+        { name: 'giaThue', label: 'Giá thuê (đ)', type: 'number', value: room.giaThue ?? room.gia_thue ?? 0, required: true },
+        { name: 'soNguoiToiDa', label: 'Sức chứa', type: 'number', value: room.soNguoiToiDa ?? room.so_nguoi_toi_da ?? 2, required: true },
+        { name: 'trangThai', label: 'Trạng thái', type: 'select', value: room.trangThai ?? room.trang_thai ?? 'Trong', options: [
+          { value: 'Trong', label: 'Phòng trống' }, { value: 'DaThue', label: 'Đang thuê' }, { value: 'BaoTri', label: 'Bảo trì' }] }
+      ],
+      onSubmit: async v => {
+        await window.bridge.call('PHONG_CAP_NHAT', {
+          phongId: Number(room.id), soPhong: v.soPhong, giaThue: Number(v.giaThue),
+          soNguoiToiDa: Number(v.soNguoiToiDa), trangThai: v.trangThai
+        });
+        UIChrome.showToast('Đã cập nhật phòng.');
+        await renderManagerRooms();
+      }
+    });
+  }
+
+  async function renderManagerTenants() {
+    const body = document.getElementById('khach_thue-body');
+    if (!body) return;
+    try {
+      const tenants = await window.bridge.call('KHACH_THUE_LAY_THEO_PHONG', { phongId: 0 }) || [];
+      const q = (document.getElementById('tenant-search')?.value || '').toLowerCase().trim();
+      const rows = tenants.filter(t => !q || [t.hoTen, t.cccd, t.soDienThoai].some(v => String(v ?? '').toLowerCase().includes(q)));
+      body.innerHTML = rows.map(t => `<tr data-id="${Number(t.id)}">
+        <td>${esc(t.soPhong ?? '—')}</td><td><span class="tag done">Đang thuê</span></td>
+        <td><b>${esc(t.hoTen ?? '')}</b></td><td class="mono">${esc(t.cccd ?? '')}</td>
+        <td class="mono">${esc(t.ngaySinh ?? '')}</td><td class="mono">${esc(t.soDienThoai ?? '')}</td>
+        <td>${esc(t.queQuan ?? '')}</td><td><span class="tag done">Hoạt động</span></td>
+        <td><span class="tag ${t.trangThaiTamTru === 'DaDangKy' ? 'done' : 'warn'}">${t.trangThaiTamTru === 'DaDangKy' ? 'Đã nộp' : 'Chưa nộp'}</span></td>
+        <td><button class="btn btn-outline btn-sm" onclick="resetTenantPasswordUI(${Number(t.id)})"><i class="fas fa-key"></i></button></td>
+      </tr>`).join('') || '<tr><td colspan="10">Chưa có người thuê trong khu.</td></tr>';
+      const count = document.getElementById('tenant-count');
+      if (count) count.textContent = `Tổng: ${rows.length} bản ghi`;
+    } catch (e) { body.innerHTML = `<tr><td colspan="10">${esc(e.message)}</td></tr>`; }
+  }
+
+  function resetTenantPasswordUI(id) {
+    openModal({
+      title: 'Đặt lại mật khẩu',
+      fields: [{ name: 'matKhauMoi', label: 'Mật khẩu mới (tối thiểu 6 ký tự)', type: 'text', required: true }],
+      onSubmit: async v => {
+        await window.bridge.call('TAI_KHOAN_DAT_LAI_MAT_KHAU', { taiKhoanId: id, matKhauMoi: v.matKhauMoi });
+        UIChrome.showToast('Đã đặt lại mật khẩu.');
+      }
+    });
+  }
+  window.renderManagerRooms = renderManagerRooms;
+  window.renderManagerTenants = renderManagerTenants;
+  window.editSelectedManagerRoom = editSelectedManagerRoom;
+  window.resetTenantPasswordUI = resetTenantPasswordUI;
+
   // ── loadOverview ──────────────────────────────────────────────────────────
   async function loadOverview() {
     // 1. Khu trọ
@@ -364,11 +456,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (id === 's03') loadOverview();
       if (id === 's04') {
         const tp = document.getElementById('tab-phong');
-        if (tp) { tp.hidden = false; if (typeof loadRooms === 'function') loadRooms(); }
+        if (tp) { tp.hidden = false; renderManagerRooms(); }
       }
       if (id === 's05') {
         const tk = document.getElementById('tab-khach_thue');
-        if (tk) { tk.hidden = false; if (typeof loadTenants === 'function') loadTenants(); }
+        if (tk) { tk.hidden = false; renderManagerTenants(); }
       }
     });
   });

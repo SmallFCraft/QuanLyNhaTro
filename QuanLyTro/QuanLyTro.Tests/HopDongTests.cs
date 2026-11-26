@@ -111,8 +111,81 @@ public class HopDongTests
         var tt = await _db.ScalarT<string>("SELECT trang_thai FROM hop_dong WHERE id = @id", new { id });
         Assert.AreEqual("ChoNhanPhong", tt);
 
-        var qr = await _db.ScalarT<string>("SELECT qr_data FROM ma_nhan_phong WHERE hop_dong_id = @id", new { id });
-        Assert.AreEqual($"QLT|{id}|{pin}", qr);
+        // MOD-03-05: chỉ lưu bản băm; plaintext trả một lần cho client, không lưu DB
+        Assert.AreEqual(0, await _db.ScalarT<int>(
+            "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='ma_nhan_phong' AND column_name IN ('pin','qr_data')"));
+        var pinHash = await _db.ScalarT<string>("SELECT ma_pin_hash FROM ma_nhan_phong WHERE hop_dong_id = @id", new { id });
+        Assert.AreEqual(64, pinHash!.Length);
+    }
+
+    [TestMethod]
+    public async Task TaoHopDong_KhachDaGanCungPhong_BanGiaoTrucTiepGiuLichSuNhanPhongCu()
+    {
+        await _db.ExecuteAsync("UPDATE ho_so_khach_thue SET phong_id=@p WHERE tai_khoan_id=@t", new { p = _phongTrongId, t = _khachId });
+        await _db.ExecuteAsync("UPDATE phong SET trang_thai='DaThue' WHERE id=@p", new { p = _phongTrongId });
+        var existingHistory = await _db.ExecuteAsync(
+            "INSERT INTO lich_su_cu_tru (tai_khoan_khach_id, phong_id, khu_tro_id, loai_bien_dong, nguoi_thuc_hien_id) VALUES (@t,@p,@k,'NhanPhong',@t)",
+            new { t = _khachId, p = _phongTrongId, k = _khuId });
+        var response = await Call(ActionNames.HopDongTao, _chuTroToken, new
+        {
+            phongId = _phongTrongId, nguoiDaiDienId = _khachId,
+            ngayBatDau = "2026-12-01", ngayKetThuc = "2027-12-01", giaThue = 2500000,
+            trangThai = "HieuLuc",
+        });
+        Assert.IsTrue(response.Success, response.Message);
+        Assert.AreEqual(_phongTrongId, await _db.ScalarT<int?>("SELECT phong_id FROM ho_so_khach_thue WHERE tai_khoan_id=@id", new { id = _khachId }));
+        Assert.AreEqual(1, await _db.ScalarT<int>("SELECT COUNT(*) FROM lich_su_cu_tru WHERE id=@id AND loai_bien_dong='NhanPhong'", new { id = existingHistory }));
+    }
+
+    [TestMethod]
+    public async Task TaoHopDong_BanGiaoPhongDaThue_DuocDaiDienDangOPhong()
+    {
+        await _db.ExecuteAsync("UPDATE phong SET trang_thai='DaThue' WHERE id=@p", new { p = _phongTrongId });
+        await _db.ExecuteAsync("UPDATE ho_so_khach_thue SET phong_id=@p WHERE tai_khoan_id=@t", new { p = _phongTrongId, t = _khachId });
+        var response = await Call(ActionNames.HopDongTao, _chuTroToken, new
+        {
+            phongId = _phongTrongId, nguoiDaiDienId = _khachId,
+            ngayBatDau = "2026-12-01", ngayKetThuc = "2027-12-01", giaThue = 2500000,
+            trangThai = "HieuLuc",
+        });
+        Assert.IsTrue(response.Success, response.Message);
+        Assert.AreEqual("HieuLuc", await _db.ScalarT<string>("SELECT trang_thai FROM hop_dong WHERE phong_id=@p", new { p = _phongTrongId }));
+    }
+
+    [TestMethod]
+    public async Task TaoHopDong_BanGiaoTrucTiep_GhiNhanCuTruVaKhongTaoPin()
+    {
+        var resp = await Call(ActionNames.HopDongTao, _chuTroToken, new
+        {
+            phongId = _phongTrongId, nguoiDaiDienId = _khachId,
+            ngayBatDau = "2026-12-01", ngayKetThuc = "2027-12-01", giaThue = 2500000,
+            trangThai = "HieuLuc",
+        });
+        Assert.IsTrue(resp.Success, resp.Message);
+        var id = GetInt(resp, "hopDongId");
+        Assert.AreEqual("HieuLuc", await _db.ScalarT<string>("SELECT trang_thai FROM hop_dong WHERE id = @id", new { id }));
+        Assert.AreEqual("DaThue", await _db.ScalarT<string>("SELECT trang_thai FROM phong WHERE id = @id", new { id = _phongTrongId }));
+        Assert.AreEqual(_phongTrongId, await _db.ScalarT<int?>("SELECT phong_id FROM ho_so_khach_thue WHERE tai_khoan_id = @id", new { id = _khachId }));
+        Assert.AreEqual(0, await _db.ScalarT<int>("SELECT COUNT(*) FROM ma_nhan_phong WHERE hop_dong_id = @id", new { id }));
+        Assert.AreEqual(1, await _db.ScalarT<int>("SELECT COUNT(*) FROM lich_su_cu_tru WHERE tai_khoan_khach_id = @id AND phong_id = @p AND loai_bien_dong = 'NhanPhong'", new { id = _khachId, p = _phongTrongId }));
+    }
+
+    [TestMethod]
+    public async Task TaoHopDong_BanGiaoTrucTiep_PhongHetSucChua_BiTuChoi()
+    {
+        await _db.ExecuteAsync("UPDATE phong SET so_nguoi_toi_da=1 WHERE id=@p", new { p = _phongTrongId });
+        await _db.ExecuteAsync("UPDATE ho_so_khach_thue SET phong_id=@p WHERE tai_khoan_id=@t", new { p = _phongTrongId, t = _khachId });
+        await DangKyKhachAsync("012345678902");
+        var secondTenant = await _db.ScalarT<int>("SELECT id FROM tai_khoan WHERE ten_dang_nhap='012345678902'");
+        var response = await Call(ActionNames.HopDongTao, _chuTroToken, new
+        {
+            phongId = _phongTrongId, nguoiDaiDienId = secondTenant,
+            ngayBatDau = "2026-12-01", ngayKetThuc = "2027-12-01", giaThue = 2500000,
+            trangThai = "HieuLuc",
+        });
+        Assert.IsFalse(response.Success);
+        StringAssert.Contains(response.Message, "đầy");
+        Assert.AreEqual(0, await _db.ScalarT<int>("SELECT COUNT(*) FROM hop_dong"));
     }
 
     [TestMethod]
@@ -170,6 +243,9 @@ public class HopDongTests
         Assert.AreEqual(_phongTrongId, await _db.ScalarT<int?>("SELECT phong_id FROM ho_so_khach_thue WHERE tai_khoan_id = @t", new { t = _khachId }));
         Assert.AreEqual(1, await _db.ScalarT<int>(
             "SELECT COUNT(*) FROM lich_su_cu_tru WHERE tai_khoan_khach_id = @t AND loai_bien_dong = 'NhanPhong'", new { t = _khachId }));
+        Assert.IsNull(await _db.ScalarT<string>("SELECT ma_pin_hash FROM ma_nhan_phong WHERE hop_dong_id=@id", new { id }));
+        Assert.IsNull(await _db.ScalarT<string>("SELECT ma_qr_token_hash FROM ma_nhan_phong WHERE hop_dong_id=@id", new { id }));
+        Assert.IsNull(await _db.ScalarT<DateTime?>("SELECT het_han FROM ma_nhan_phong WHERE hop_dong_id=@id", new { id }));
 
         // mã đã dùng — dùng lại phải báo lỗi rõ ràng
         var again = await Call(ActionNames.KhachThueNhanPhongQr, token, new { tokenOrPin = pin });
@@ -258,10 +334,10 @@ public class HopDongTests
     [TestMethod]
     public async Task GiaHan_TaoPhuLuc_CapNhatNgayKetThuc()
     {
-        var (id, _) = await TaoHopDongChoPhongTrongAsync();
+        var (id, pin) = await TaoHopDongChoPhongTrongAsync();
         // đưa hợp đồng vào hiệu lực bằng cách nhận phòng
         var token = await DangNhapKhachAsync("012345678901");
-        await Call(ActionNames.KhachThueNhanPhongQr, token, new { tokenOrPin = (await _db.ScalarT<string>("SELECT pin FROM ma_nhan_phong WHERE hop_dong_id = @id", new { id }))! });
+        await Call(ActionNames.KhachThueNhanPhongQr, token, new { tokenOrPin = pin });
 
         var resp = await Call(ActionNames.HopDongGiaHan, _chuTroToken, new { hopDongId = id, newEndDate = "2028-06-30" });
         Assert.IsTrue(resp.Success, resp.Message);
@@ -280,10 +356,58 @@ public class HopDongTests
     }
 
     [TestMethod]
+    public async Task ChamDut_ThieuLyDoHoacNgayBanGiao_BiTuChoi()
+    {
+        var (id, _) = await TaoHopDongChoPhongTrongAsync();
+        var noReason = await Call(ActionNames.HopDongChamDut, _chuTroToken, new { hopDongId = id, ngayBanGiao = DateOnly.FromDateTime(DateTime.Today.AddDays(30)).ToString("yyyy-MM-dd") });
+        Assert.IsFalse(noReason.Success);
+
+        var noDate = await Call(ActionNames.HopDongChamDut, _chuTroToken, new { hopDongId = id, lyDo = "Chấm dứt theo yêu cầu" });
+        Assert.IsFalse(noDate.Success);
+    }
+
+    [TestMethod]
+    public async Task ChamDut_NgayBanGiaoItHon30Ngay_BiTuChoi()
+    {
+        var (id, _) = await TaoHopDongChoPhongTrongAsync();
+        var resp = await Call(ActionNames.HopDongChamDut, _chuTroToken, new { hopDongId = id, lyDo = "Lý do hợp lệ", ngayBanGiao = DateOnly.FromDateTime(DateTime.Today.AddDays(29)).ToString("yyyy-MM-dd") });
+        Assert.IsFalse(resp.Success);
+    }
+
+    [TestMethod]
+    public async Task ChamDut_QuanLyTrucTiep_BiTuChoi_PhaiQuaDeXuat()
+    {
+        var (id, _) = await TaoHopDongChoPhongTrongAsync();
+        await _db.ExecuteAsync(
+            "INSERT INTO tai_khoan (ten_dang_nhap, mat_khau_hash, ho_ten, vai_tro, khu_tro_id) VALUES ('ql', @h, 'QL A', 'QuanLy', @k)",
+            new { h = PasswordHasher.Hash("mk123456"), k = _khuId });
+        var s = await _auth.LoginAsync("ql", "mk123456");
+        var resp = await Call(ActionNames.HopDongChamDut, s.Token, new { hopDongId = id, lyDo = "QL cham dut", ngayBanGiao = DateOnly.FromDateTime(DateTime.Today.AddDays(40)).ToString("yyyy-MM-dd") });
+        Assert.IsFalse(resp.Success, "Quản lý không được chấm dứt trực tiếp — phải gửi đề xuất");
+        Assert.AreEqual("ChoNhanPhong", await _db.ScalarT<string>("SELECT trang_thai FROM hop_dong WHERE id = @id", new { id }));
+    }
+
+    [TestMethod]
+    public async Task ChamDut_KhongTuDongTraPhong_TruocNgayBanGiao()
+    {
+        var (id, pin) = await TaoHopDongChoPhongTrongAsync();
+        var tenantToken = await DangNhapKhachAsync("012345678901");
+        Assert.IsTrue((await Call(ActionNames.KhachThueNhanPhongQr, tenantToken, new { tokenOrPin = pin })).Success);
+
+        var resp = await Call(ActionNames.HopDongChamDut, _chuTroToken, new
+        {
+            hopDongId = id, lyDo = "Chấm dứt theo thông báo", ngayBanGiao = DateOnly.FromDateTime(DateTime.Today.AddDays(30)).ToString("yyyy-MM-dd")
+        });
+        Assert.IsTrue(resp.Success, resp.Message);
+        Assert.AreEqual("DaThue", await _db.ScalarT<string>("SELECT trang_thai FROM phong WHERE id=@id", new { id = _phongTrongId }));
+        Assert.AreEqual(_phongTrongId, await _db.ScalarT<int?>("SELECT phong_id FROM ho_so_khach_thue WHERE tai_khoan_id=@id", new { id = _khachId }));
+    }
+
+    [TestMethod]
     public async Task ChamDut_PhongVeTrong_MaConLaiBiVoHieu()
     {
         var (id, pin) = await TaoHopDongChoPhongTrongAsync();
-        var resp = await Call(ActionNames.HopDongChamDut, _chuTroToken, new { hopDongId = id, ghiChu = "Khach hoan tra" });
+        var resp = await Call(ActionNames.HopDongChamDut, _chuTroToken, new { hopDongId = id, lyDo = "Khách hoàn trả theo thỏa thuận", ngayBanGiao = DateOnly.FromDateTime(DateTime.Today.AddDays(30)).ToString("yyyy-MM-dd") });
         Assert.IsTrue(resp.Success, resp.Message);
         Assert.AreEqual("ChamDut", await _db.ScalarT<string>("SELECT trang_thai FROM hop_dong WHERE id = @id", new { id }));
         Assert.AreEqual("Trong", await _db.ScalarT<string>("SELECT trang_thai FROM phong WHERE id = @p", new { p = _phongTrongId }));
@@ -299,9 +423,11 @@ public class HopDongTests
     [TestMethod]
     public async Task ChamDut_Lan2_BiTuChoi()
     {
-        var (id, _) = await TaoHopDongChoPhongTrongAsync();
-        await Call(ActionNames.HopDongChamDut, _chuTroToken, new { hopDongId = id });
-        var again = await Call(ActionNames.HopDongChamDut, _chuTroToken, new { hopDongId = id });
+        var (id, pin) = await TaoHopDongChoPhongTrongAsync();
+        var token = await DangNhapKhachAsync("012345678901");
+        await Call(ActionNames.KhachThueNhanPhongQr, token, new { tokenOrPin = pin });
+        await Call(ActionNames.HopDongChamDut, _chuTroToken, new { hopDongId = id, lyDo = "Lý do hợp lệ", ngayBanGiao = DateOnly.FromDateTime(DateTime.Today.AddDays(30)).ToString("yyyy-MM-dd") });
+        var again = await Call(ActionNames.HopDongChamDut, _chuTroToken, new { hopDongId = id, lyDo = "Lý do hợp lệ", ngayBanGiao = DateOnly.FromDateTime(DateTime.Today.AddDays(30)).ToString("yyyy-MM-dd") });
         Assert.IsFalse(again.Success);
     }
 
@@ -360,6 +486,35 @@ public class HopDongTests
     }
 
     [TestMethod]
+    public async Task PhuLuc_QuaHaiNguoiHoacTrungCccd_BiTuChoiKhongGhiThem()
+    {
+        var (id, _) = await TaoHopDongChoPhongTrongAsync();
+        var tooMany = await Call(ActionNames.PhuLucCapNhat, _chuTroToken, new
+        {
+            hopDongId = id,
+            nguoiOCung = new object[]
+            {
+                new { hoTen = "Nguoi 1", cccd = "111111111111", ngaySinh = "1999-01-01" },
+                new { hoTen = "Nguoi 2", cccd = "222222222222", ngaySinh = "1998-01-01" },
+                new { hoTen = "Nguoi 3", cccd = "333333333333", ngaySinh = "1997-01-01" },
+            }
+        });
+        Assert.IsFalse(tooMany.Success, "Tối đa hai người ở chung ngoài người đại diện");
+        Assert.AreEqual(0, await _db.ScalarT<int>("SELECT COUNT(*) FROM phu_luc_hop_dong WHERE hop_dong_id=@id AND loai='ThemNguoi'", new { id }));
+
+        var sameAsRepresentative = await Call(ActionNames.PhuLucCapNhat, _chuTroToken, new
+        {
+            hopDongId = id,
+            nguoiOCung = new object[]
+            {
+                new { hoTen = "CCCD dai dien", cccd = "012345678901", ngaySinh = "1999-01-01" }
+            }
+        });
+        Assert.IsFalse(sameAsRepresentative.Success, "CCCD người ở chung không được trùng CCCD người đại diện");
+        Assert.AreEqual(0, await _db.ScalarT<int>("SELECT COUNT(*) FROM phu_luc_hop_dong WHERE hop_dong_id=@id AND loai='ThemNguoi'", new { id }));
+    }
+
+    [TestMethod]
     public async Task Rbac_LeTanVaCongAn_KhongCoActionHopDong()
     {
         await _db.ExecuteAsync(
@@ -413,18 +568,18 @@ public class HopDongTests
     }
 
     [TestMethod]
-    public async Task ChamDut_XoaPhongKhoiHoSo_GhiLichSuTraPhong()
+    public async Task ChamDut_ChuaNhanPhong_GiaiPhongPhongVaGhiLichSu()
     {
-        var (id, pin) = await TaoHopDongChoPhongTrongAsync();
-        var token = await DangNhapKhachAsync("012345678901");
-        await Call(ActionNames.KhachThueNhanPhongQr, token, new { tokenOrPin = pin });
-        Assert.AreEqual(_phongTrongId, await _db.ScalarT<int?>("SELECT phong_id FROM ho_so_khach_thue WHERE tai_khoan_id = @t", new { t = _khachId }));
-
-        await Call(ActionNames.HopDongChamDut, _chuTroToken, new { hopDongId = id, ghiChu = "Tra phong" });
-
-        Assert.IsNull(await _db.ScalarT<int?>("SELECT phong_id FROM ho_so_khach_thue WHERE tai_khoan_id = @t", new { t = _khachId }));
-        Assert.AreEqual(1, await _db.ScalarT<int>(
-            "SELECT COUNT(*) FROM lich_su_cu_tru WHERE tai_khoan_khach_id = @t AND loai_bien_dong = 'TraPhong'", new { t = _khachId }));
+        // Hợp đồng chờ nhận phòng: chấm dứt thì chưa từng có người ở nên không có TraPhong,
+        // phòng vẫn Trong và không giữ lịch sử trả phòng sai.
+        var (id, _) = await TaoHopDongChoPhongTrongAsync();
+        var historyBefore = await _db.ScalarT<int>(
+            "SELECT COUNT(*) FROM lich_su_cu_tru WHERE tai_khoan_khach_id=@t AND loai_bien_dong='TraPhong'", new { t = _khachId });
+        var resp = await Call(ActionNames.HopDongChamDut, _chuTroToken, new { hopDongId = id, lyDo = "Khách hủy thuê", ngayBanGiao = DateOnly.FromDateTime(DateTime.Today.AddDays(30)).ToString("yyyy-MM-dd") });
+        Assert.IsTrue(resp.Success, resp.Message);
+        Assert.AreEqual("Trong", await _db.ScalarT<string>("SELECT trang_thai FROM phong WHERE id=@id", new { id = _phongTrongId }));
+        Assert.AreEqual(historyBefore, await _db.ScalarT<int>(
+            "SELECT COUNT(*) FROM lich_su_cu_tru WHERE tai_khoan_khach_id=@t AND phong_id=@p AND loai_bien_dong='TraPhong'", new { t = _khachId, p = _phongTrongId }));
     }
 
     [TestMethod]

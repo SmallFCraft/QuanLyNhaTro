@@ -67,6 +67,9 @@ body:has(> .win){height:100vh;overflow:hidden}
 .toolbar .spacer{flex:1}
 .toolbar .inp{background:#1C2126;border-color:#2C343B}
 .toolbar select{height:30px}
+.glass-role-compat .police-content .toolbar { background: var(--glass-bg); border-color: var(--glass-border); box-shadow: var(--glass-shadow); }
+.glass-role-compat .police-content .toolbar .inp,
+.glass-role-compat .police-content .toolbar select { background: rgba(255,255,255,.78); color: var(--text); border-color: var(--border-strong); }
 
 /* KPI blocks */
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
@@ -107,6 +110,27 @@ body:has(> .win){height:100vh;overflow:hidden}
 .statusstrip .l,.statusstrip .r{display:flex;align-items:center;gap:7px;min-width:0}
 .statusstrip .l{font-family:inherit;font-size:11px}
 
+/* ===== shared glass compatibility ===== */
+.glass-role-compat .userbar,
+.glass-role-compat .tenant-topbar { background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border-bottom-color: var(--glass-border); color: var(--text); }
+.glass-role-compat .police-content .toolbar,
+.glass-role-compat .police-content .tblwrap { background: var(--glass-bg-pure); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.glass-role-compat .police-content .tbl { width: 100%; border-collapse: collapse; color: var(--text); font-size: 13px; }
+.glass-role-compat .police-content .tbl th { padding: 11px 12px; background: rgba(255,255,255,.55); color: var(--text-secondary); border-bottom: 1px solid var(--border); text-align: left; font-size: 11.5px; font-weight: 700; text-transform: uppercase; }
+.glass-role-compat .police-content .tbl td { padding: 11px 12px; border-bottom: 1px solid var(--border); color: var(--text); }
+.glass-role-compat .police-content .inp { min-height: 36px; padding: 7px 11px; border: 1px solid var(--glass-border); outline: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); background: rgba(255,255,255,.72); font: inherit; }
+.glass-role-compat .police-content .btn-outline { border: 1px solid var(--border-strong); border-radius: 11px; background: rgba(255,255,255,.72); color: var(--text); }
+.glass-role-compat .police-content .tblfoot { background: var(--glass-bg-pure); border-color: var(--border); color: var(--text-secondary); }
+.glass-role-compat .fas { display: inline-block; width: 1.1em; text-align: center; font-style: normal; font-family: var(--font-sans); }
+.glass-role-compat .fas::before { display: inline-block; }
+.glass-role-compat .fa-search::before { content: "⌕"; }
+.glass-role-compat .fa-file-export::before { content: "⇩"; }
+.glass-role-compat .fa-door-closed::before { content: "▣"; }
+.glass-role-compat .fa-users::before { content: "♙"; }
+.glass-role-compat .fa-id-card::before { content: "▤"; }
+.glass-role-compat .fa-exclamation-triangle::before { content: "!"; }
+.glass-role-compat .fa-circle-info::before { content: "ⓘ"; }
+
 /* ===== responsive: điện thoại dọc ===== */
 @media (max-width: 640px) {
   .win {
@@ -145,4 +169,35 @@ body:has(> .win){height:100vh;overflow:hidden}
   .toolbar .spacer {
     display: none;
   }
+}
+
+/* Single glass workspace: legacy police panes must not create a second vertical column. */
+body:has(> .screen-view) { height: 100vh; overflow: hidden; }
+.screen-view.active { height: 100%; min-height: 0; }
+.screen-view.active > .app-shell { height: 100%; min-height: 0; }
+.glass-role-compat .shell-main { min-height: 0; }
+.glass-role-compat .police-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 22px 24px 32px;
+  color: var(--text);
+}
+.police-kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
+.police-kpi {
+  min-width: 0;
+  padding: 16px;
+  display: grid;
+  gap: 8px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--glass-shadow);
+}
+.police-kpi .lbl { color: var(--text-secondary); font-size: 12px; font-weight: 600; }
+.police-kpi .val { color: var(--ink); font: 700 24px/1.2 var(--font-mono); }
+.police-kpi .sub { color: var(--text-muted); font-size: 12px; }
+@media (max-width: 760px) {
+  .glass-role-compat .police-content { padding: 14px; }
+  .police-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 }

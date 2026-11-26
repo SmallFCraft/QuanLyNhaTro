@@ -189,7 +189,7 @@ async function openContractForm(phongId, room) {
       { name: 'ngayKetThuc', label: 'Ngày kết thúc', type: 'date', value: plusYearIso(), required: true },
       { name: 'giaThue', label: 'Giá thuê', type: 'number', value: String(roomPrice), required: true },
       { name: 'tienCoc', label: 'Tiền cọc', type: 'number', value: '0' },
-      { name: 'choQr', label: 'Chờ khách quét QR nhận phòng', type: 'select', value: '1',
+      { name: 'choQr', label: 'Chờ khách quét QR nhận phòng', type: 'select', value: inRoom.length ? '0' : '1',
         options: [{ value: '1', label: 'Có — sinh mã QR / PIN' }, { value: '0', label: 'Không — bàn giao trực tiếp' }] },
       { name: 'ghiChu', label: 'Ghi chú', value: '' }
     ],
@@ -209,7 +209,7 @@ async function openContractForm(phongId, room) {
       toast(choQr
         ? `Đã lập hợp đồng chờ nhận phòng cho ${room.soPhong}. Bấm "Xem QR / PIN" để gửi mã cho khách.`
         : `Đã lập hợp đồng cho phòng ${room.soPhong}.`, 'ok');
-      await loadContracts();
+      await Promise.all([loadContracts(), loadRooms(), loadTenants()]);
     }
   });
 }
@@ -333,35 +333,35 @@ function terminateContract(id) {
   if (!c) { toast('Vui lòng chọn hợp đồng cần chấm dứt.', 'err'); return; }
   const conHan = (c.trangThai ?? c.trang_thai) === 'ChoNhanPhong' || daysLeft(c) > 0;
 
-  const fields = [];
-  if (conHan) {
-    fields.push({
+  const fields = [
+    {
       name: 'ngayBanGiao',
       label: 'Ngày bàn giao dự kiến (quy định báo trước ≥ 30 ngày)',
       type: 'date',
       value: plusDaysIso(30),
       required: true
-    });
-  }
-  fields.push({
-    name: 'ghiChu',
-    label: conHan
-      ? 'Lý do chấm dứt trước hạn (bắt buộc: nợ tiền 3 tháng, vi phạm nội quy...)'
-      : 'Lý do chấm dứt (tùy chọn)',
-    value: c.ghiChu ?? c.ghi_chu ?? '',
-    required: conHan,
-    placeholder: conHan ? 'Nhập căn cứ chấm dứt hợp đồng...' : 'Để trống nếu không có ghi chú'
-  });
+    },
+    {
+      name: 'ghiChu',
+      label: 'Lý do chấm dứt (bắt buộc)',
+      value: c.ghiChu ?? c.ghi_chu ?? '',
+      required: true,
+      placeholder: 'Nhập căn cứ chấm dứt hợp đồng...'
+    }
+  ];
 
   openModal({
     title: `Chấm dứt — phòng ${c.soPhong ?? c.phongId}${conHan ? ' (trước hạn)' : ''}`,
     fields,
     onSubmit: async v => {
-      let ghiChuCombined = (v.ghiChu || '').trim();
-      if (conHan && v.ngayBanGiao) {
-        ghiChuCombined = `[Bàn giao dự kiến: ${v.ngayBanGiao}] ${ghiChuCombined}`.trim();
+      const lyDo = (v.ghiChu || '').trim();
+      if (!lyDo) { toast('Bắt buộc phải có lý do chấm dứt.', 'err'); return; }
+      const ngay = v.ngayBanGiao;
+      if (!ngay || new Date(ngay) < new Date(Date.now() + 30 * 86400000)) {
+        toast('Ngày bàn giao dự kiến phải ít nhất 30 ngày kể từ hôm nay.', 'err');
+        return;
       }
-      await window.bridge.call('HOP_DONG_CHAM_DUT', { hopDongId: c.id, ghi_chu: ghiChuCombined || null });
+      await window.bridge.call('HOP_DONG_CHAM_DUT', { hopDongId: c.id, lyDo, ngayBanGiao: ngay });
       toast('Đã chấm dứt hợp đồng.', 'ok');
       await loadContracts();
     }

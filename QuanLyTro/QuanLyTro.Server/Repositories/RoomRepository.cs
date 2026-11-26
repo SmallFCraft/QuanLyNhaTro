@@ -30,14 +30,14 @@ public sealed class RoomRepository
               VALUES (@k, @s, @g, @n, @m)",
             new { k = khuTroId, s = soPhong, g = giaThue, n = soNguoiToiDa, m = moTa });
 
-    public Task<int> UpdatePhongAsync(int id, decimal giaThue, int soNguoiToiDa, string? moTa, string? trangThai) =>
+    public Task<int> UpdatePhongAsync(int id, string? soPhong, decimal giaThue, int soNguoiToiDa, string? moTa, string? trangThai) =>
         _db.ExecuteAsync(
-            @"UPDATE phong SET gia_thue = @g, so_nguoi_toi_da = @n,
+            @"UPDATE phong SET so_phong = COALESCE(@s, so_phong), gia_thue = @g, so_nguoi_toi_da = @n,
                  mo_ta = COALESCE(@m, mo_ta),
                  trang_thai = COALESCE(@tt, trang_thai),
                  ngay_cap_nhat = NOW()
                WHERE id = @id",
-            new { g = giaThue, n = soNguoiToiDa, m = moTa, tt = trangThai, id });
+            new { s = soPhong, g = giaThue, n = soNguoiToiDa, m = moTa, tt = trangThai, id });
 
     public Task<int> DeletePhongAsync(int id) =>
         _db.ExecuteAsync("DELETE FROM phong WHERE id = @id", new { id });

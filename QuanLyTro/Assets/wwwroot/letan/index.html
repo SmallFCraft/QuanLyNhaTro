@@ -23,9 +23,9 @@
               <button type="button" class="sidebar-close-btn" data-close-drawer="true" aria-label="Đóng menu">✕</button>
             </div>
             <ul class="sidebar-nav">
-              <li><button type="button" class="nav-btn active" data-goto="s03"><span>Lịch kiểm tra</span></button></li>
+              <li><button type="button" class="nav-btn active" data-tab="schedule"><span>Lịch kiểm tra</span></button></li>
+              <li><button type="button" class="nav-btn" data-tab="incidents"><span>Sự cố khu trọ</span></button></li>
             </ul>
-            <div class="sidebar-footer"><span>TCP 8888</span><span>Lễ tân</span></div>
           </aside>
 
           <div class="shell-main">
@@ -39,18 +39,26 @@
               <div class="userbar-right">
                 <button type="button" class="conn-status"><span class="conn-dot"></span><span>Trực tuyến</span></button>
                 <span class="user-name" id="pname">Lễ tân</span>
-                <span class="role-pill">Lễ tân</span>
                 <button type="button" class="icon-btn danger" data-goto="s01" title="Đăng xuất" aria-label="Đăng xuất">
                   <svg class="ms-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M10 3H4a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h6v-2H5V5h5V3zm4 4-1.4 1.4L15.2 11H9v2h6.2l-2.6 2.6L14 17l5-5-5-5z"/></svg>
                 </button>
               </div>
             </header>
             <main class="content">
-              <div class="page-header"><div><h1 class="page-title" id="ptitle">Lịch kiểm tra phòng</h1><p class="page-subtitle">Duyệt, từ chối và gán nhân viên cho lịch xem phòng</p></div></div>
-              <div class="card">
-                <div class="card-header"><h2 class="card-title">Lịch kiểm tra phòng <span class="pill pill-gray pill-nodot" id="cnt-lich">0</span></h2></div>
-                <div id="ltab-lich"><p class="helper-text">Đang tải lịch kiểm tra…</p></div>
-              </div>
+              <section id="pane-schedule">
+                <div class="page-header"><div><h1 class="page-title" id="ptitle">Lịch kiểm tra phòng</h1><p class="page-subtitle">Duyệt, từ chối và gán nhân viên cho lịch xem phòng</p></div></div>
+                <div class="card">
+                  <div class="card-header"><h2 class="card-title">Lịch kiểm tra phòng <span class="pill pill-gray pill-nodot" id="cnt-lich">0</span></h2></div>
+                  <div id="ltab-lich"><p class="helper-text">Đang tải lịch kiểm tra…</p></div>
+                </div>
+              </section>
+              <section id="pane-incidents" hidden>
+                <div class="page-header"><div><h1 class="page-title">Sự cố khu trọ</h1><p class="page-subtitle">Theo dõi sự cố đã ghi nhận trong phạm vi khu trọ</p></div></div>
+                <div class="card">
+                  <div class="card-header"><h2 class="card-title">Sự cố gần đây</h2></div>
+                  <div id="incident-body"><p class="helper-text">Đang tải sự cố…</p></div>
+                </div>
+              </section>
             </main>
           </div>
 </div>
@@ -64,7 +72,7 @@
   <div class="toast-stack" id="toastStack" aria-live="polite"></div>
   <script src="../shared/js/bridge.js?v=2"></script>
   <script src="../shared/js/ui.js?v=2"></script>
-  <script src="../shared/js/chrome.js?v=2"></script>
-  <script src="main.js?v=2"></script>
+  <script src="../shared/js/chrome.js?v=3"></script>
+  <script src="main.js?v=4"></script>
 </body>
 </html>

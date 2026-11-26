@@ -21,7 +21,10 @@
     const requestId = (global.crypto && global.crypto.randomUUID)
       ? global.crypto.randomUUID()
       : "req-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
-    if (!isWebView2) return Promise.resolve({ requestId, success: true, data: data || {} });
+    // NGOẠI LỆ: khi chạy trực tiếp qua HTTP (static preview) không có WebView2,
+    // không được giả response thành công trộn requests với responses — đó là nguồn
+    // lỗi "xxx is not iterable". Nơi nào dùng app thật thì WebView2 chuyển tiếp.
+    if (!isWebView2) return Promise.reject(new Error('Không chạy trong WebView2 — hãy mở qua ứng dụng.'));
     return new Promise(function (resolve, reject) {
       const timer = setTimeout(function () { pending.delete(requestId); reject(new Error("Timeout: " + action)); }, timeoutMs || 15000);
       pending.set(requestId, { resolve, reject, timer });

@@ -14,6 +14,7 @@ public sealed class TcpClientTransport : IDisposable
     private System.Net.Sockets.TcpClient? _client;
     private NetworkStream? _stream;
     private readonly SemaphoreSlim _writeLock = new(1, 1);
+    private readonly SemaphoreSlim _connectionLock = new(1, 1);
     private readonly ConcurrentDictionary<string, TaskCompletionSource<ResponsePacket>> _pending = new();
     private CancellationTokenSource? _readCts;
     private string _host;
@@ -29,11 +30,40 @@ public sealed class TcpClientTransport : IDisposable
 
     public async Task ConnectAsync()
     {
-        _readCts = new CancellationTokenSource();
-        _client = new System.Net.Sockets.TcpClient();
-        await _client.ConnectAsync(_host, _port);
-        _stream = _client.GetStream();
-        _ = ReadLoopAsync(_readCts.Token);
+        await _connectionLock.WaitAsync();
+        try
+        {
+            if (_client is { Connected: true } && _stream is not null) return;
+            _stream?.Dispose();
+            _client?.Dispose();
+            _stream = null;
+            _client = null;
+            _readCts?.Dispose();
+            _readCts = new CancellationTokenSource();
+            var client = new System.Net.Sockets.TcpClient();
+            try
+            {
+                await client.ConnectAsync(_host, _port);
+                _client = client;
+                _stream = client.GetStream();
+                _ = ReadLoopAsync(client, _stream, _readCts.Token);
+            }
+            catch (SocketException ex)
+            {
+                client.Dispose();
+                _readCts.Dispose();
+                _readCts = null;
+                throw new IOException("Không thể kết nối tới máy chủ. Hãy kiểm tra server có đang chạy không.", ex);
+            }
+            catch
+            {
+                client.Dispose();
+                _readCts.Dispose();
+                _readCts = null;
+                throw;
+            }
+        }
+        finally { _connectionLock.Release(); }
     }
 
     public async Task<ResponsePacket> SendAsync(string action, string? token, object? data = null)
@@ -58,7 +88,7 @@ public sealed class TcpClientTransport : IDisposable
         }
     }
 
-    private async Task ReadLoopAsync(CancellationToken ct)
+    private async Task ReadLoopAsync(TcpClient client, NetworkStream stream, CancellationToken ct)
     {
         var buf = new byte[8192];
         var line = new MemoryStream();
@@ -66,7 +96,7 @@ public sealed class TcpClientTransport : IDisposable
         {
             while (!ct.IsCancellationRequested)
             {
-                var n = await _stream!.ReadAsync(buf, ct);
+                var n = await stream.ReadAsync(buf, ct);
                 if (n == 0) break;
                 for (var i = 0; i < n; i++)
                 {
@@ -83,6 +113,13 @@ public sealed class TcpClientTransport : IDisposable
         // giải phóng mọi request đang chờ khi mất kết nối
         foreach (var kv in _pending)
             kv.Value.TrySetException(new IOException("Mất kết nối tới server."));
+        if (ReferenceEquals(_client, client))
+        {
+            _stream?.Dispose();
+            client.Dispose();
+            _stream = null;
+            _client = null;
+        }
     }
 
     private void HandleLine(byte[] bytes)

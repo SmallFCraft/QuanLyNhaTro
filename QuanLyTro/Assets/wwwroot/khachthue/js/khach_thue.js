@@ -888,6 +888,12 @@ document.addEventListener('DOMContentLoaded', () => {
   switchTenantTab(params.get('tab') === 'history' ? 'history' : 'overview');
   wireTabKeys('tenantTabs', switchTenantTab);
   wireTabKeys('checkinTabs', switchCheckinTab);
+  document.querySelectorAll('#tenantTabs [data-tab]').forEach(btn => {
+    btn.addEventListener('click', () => switchTenantTab(btn.dataset.tab));
+  });
+  document.getElementById('btnShowCheckin')?.addEventListener('click', () => showCheckinScreen(true));
+  document.getElementById('btnTenantCheckinSubmit')?.addEventListener('click', submitPin);
+  document.getElementById('btnBackToOverview')?.addEventListener('click', () => showCheckinScreen(false));
   document.getElementById('btnTenantReportIssue')?.addEventListener('click', openTenantReportIssueModal);
   loadTenantInvoices();
   // ponytail: tự động làm mới toàn trang mỗi 30s + khi quay lại cửa sổ — thay nút sync tay.

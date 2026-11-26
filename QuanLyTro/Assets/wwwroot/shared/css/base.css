@@ -142,7 +142,7 @@
       bottom: 80px; right: 18%;
       background: radial-gradient(circle, rgba(255, 255, 255, 0.92) 0%, rgba(224, 242, 254, 0.35) 65%, transparent 100%);
     }
-    .stage-wrapper { position: relative; z-index: 1; min-height: calc(100vh - var(--switcher-h)); transition: padding 0.2s; }
+    .stage-wrapper { position: relative; z-index: 1; min-height: calc(100vh - var(--switcher-h)); }
     body.sim-mobile .stage-wrapper {
       padding: 18px 12px 28px;
       display: flex;
@@ -706,7 +706,6 @@
       -webkit-backdrop-filter: var(--glass-blur);
       border: 1px solid var(--glass-border);
       outline: 1px solid rgba(245, 158, 11, 0.28);
-      border-left: 4px solid #F59E0B;
       border-radius: var(--radius-md);
       box-shadow: var(--glass-shadow);
       padding: 13px 16px;
@@ -915,6 +914,87 @@
     .modal-box { width: 100%; max-width: 460px; background: rgba(255, 255, 255, 0.90); backdrop-filter: blur(28px) saturate(180%); border: 1px solid #FFFFFF; outline: 1px solid var(--glass-outline); border-radius: var(--radius-md); box-shadow: var(--glass-shadow-lg); padding: 20px; max-height: 90vh; overflow-y: auto; }
     .toast-stack { position: fixed; bottom: 18px; right: 18px; z-index: 1100; display: flex; flex-direction: column; gap: 8px; max-width: 350px; }
     .toast { background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(18px); color: #FFFFFF; padding: 11px 16px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.16); box-shadow: var(--glass-shadow-lg); font-size: 13px; font-weight: 500; }
+
+    /* Shared modal helpers used by legacy role shells. */
+    body:has(> .screen-view) #modal-root { position: relative; z-index: 1200; }
+    body:has(> .screen-view) #modal-root .modal-back { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(15,23,42,.38); backdrop-filter: blur(5px); }
+    body:has(> .screen-view) #modal-root .modal { width: min(100%,520px); max-height: min(90vh,760px); overflow: auto; padding: 20px; color: var(--text); background: rgba(255,255,255,.96); border: 1px solid var(--glass-border); outline: 1px solid var(--glass-outline); border-radius: var(--radius-md); box-shadow: var(--glass-shadow-lg); }
+    body:has(> .screen-view) #modal-root .modal-hdr { margin-bottom: 16px; color: var(--ink); font-size: 17px; font-weight: 700; }
+    body:has(> .screen-view) #modal-root .modal-row { display: grid; gap: 6px; margin-bottom: 12px; }
+    body:has(> .screen-view) #modal-root .modal-row label { color: var(--text-secondary); font-size: 12px; font-weight: 600; }
+    body:has(> .screen-view) #modal-root .modal .inp { width: 100%; min-height: 38px; padding: 8px 10px; color: var(--text); background: #fff; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font: inherit; }
+    body:has(> .screen-view) #modal-root .modal .inp:focus { outline: 2px solid rgba(37,99,235,.22); border-color: var(--accent); }
+    body:has(> .screen-view) #modal-root .modal-ft, body:has(> .screen-view) #modal-root .dlg-ft { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+    body:has(> .screen-view) #modal-root .modal .btn-primary { color: #fff; background: var(--ink); }
+    body:has(> .screen-view) #modal-root .modal .btn-outline { color: var(--text); background: #fff; border: 1px solid var(--border-strong); }
+    body:has(> .screen-view) #modal-root .modal .btn-danger { color: var(--red-text); background: var(--red-bg); border: 1px solid var(--red-border); }
+    body:has(> .screen-view) #modal-root .dlg-body { display: flex; align-items: flex-start; gap: 12px; }
+    body:has(> .screen-view) #modal-root .dlg-icon { color: var(--amber-text); font-size: 20px; }
+    body:has(> .screen-view) #modal-root .dlg-title { color: var(--ink); font-weight: 700; }
+    body:has(> .screen-view) #modal-root .dlg-msg { margin-top: 5px; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+    body:has(> .screen-view) #modal-root > .toast { position: fixed; right: 18px; bottom: 18px; z-index: 1300; max-width: min(360px,calc(100vw - 36px)); padding: 11px 14px; color: var(--text); background: rgba(255,255,255,.96); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--glass-shadow); font-size: 13px; }
+    body:has(> .screen-view) #modal-root > .toast.ok { border-color: var(--green-border); }
+    body:has(> .screen-view) #modal-root > .toast.err { color: var(--red-text); border-color: var(--red-border); }
+    body:has(> .screen-view) #modal-root > .toast.warn { color: var(--amber-text); border-color: var(--amber-border); }
+
+    /* Shared compatibility for legacy role panes. */
+    .glass-role-compat .userbar,
+    .glass-role-compat .tenant-topbar { background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border-bottom-color: var(--glass-border); color: var(--text); }
+    .glass-role-compat .legacy-panes .toolbar,
+    .glass-role-compat .legacy-panes .tblwrap { background: var(--glass-bg-pure); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+    .glass-role-compat .legacy-panes .tbl { width: 100%; border-collapse: collapse; color: var(--text); font-size: 13px; }
+    .glass-role-compat .legacy-panes .tbl th { padding: 11px 12px; background: rgba(255,255,255,.55); color: var(--text-secondary); border-bottom: 1px solid var(--border); text-align: left; font-size: 11.5px; font-weight: 700; text-transform: uppercase; }
+    .glass-role-compat .legacy-panes .tbl td { padding: 11px 12px; border-bottom: 1px solid var(--border); color: var(--text); }
+    .glass-role-compat .legacy-panes .inp { min-height: 36px; padding: 7px 11px; border: 1px solid var(--glass-border); outline: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); background: rgba(255,255,255,.72); font: inherit; }
+    .glass-role-compat .legacy-panes .btn-outline { border: 1px solid var(--border-strong); border-radius: 11px; background: rgba(255,255,255,.72); color: var(--text); }
+    .glass-role-compat .legacy-panes .tblfoot { background: var(--glass-bg-pure); border-color: var(--border); color: var(--text-secondary); }
+    .glass-role-compat .fas { display: inline-block; width: 1.1em; text-align: center; font-style: normal; font-family: var(--font-sans); }
+    .glass-role-compat .fas::before { display: inline-block; }
+    .glass-role-compat .fa-plus::before { content: "＋"; }
+    .glass-role-compat .fa-edit::before { content: "✎"; }
+    .glass-role-compat .fa-trash::before { content: "×"; }
+    .glass-role-compat .fa-search::before { content: "⌕"; }
+    .glass-role-compat .fa-file-export::before { content: "⇩"; }
+    .glass-role-compat .fa-eye::before { content: "◉"; }
+    .glass-role-compat .fa-door-closed::before { content: "▣"; }
+    .glass-role-compat .fa-users::before { content: "♙"; }
+    .glass-role-compat .fa-id-card::before { content: "▤"; }
+    .glass-role-compat .fa-exclamation-triangle::before { content: "!"; }
+    .glass-role-compat .fa-circle-check::before,
+    .glass-role-compat .fa-check-circle::before,
+    .glass-role-compat .fa-verified::before { content: "✓"; }
+    .glass-role-compat .fa-check-double::before { content: "✓✓"; }
+    .glass-role-compat .fa-clock::before { content: "◷"; }
+    .glass-role-compat .fa-crown::before { content: "♛"; }
+    .glass-role-compat .fa-download::before { content: "⇩"; }
+    .glass-role-compat .fa-file::before,
+    .glass-role-compat .fa-file-invoice::before,
+    .glass-role-compat .fa-file-csv::before { content: "▤"; }
+    .glass-role-compat .fa-hand-pointer::before { content: "☞"; }
+    .glass-role-compat .fa-hourglass-half::before { content: "⌛"; }
+    .glass-role-compat .fa-key::before { content: "◆"; }
+    .glass-role-compat .fa-lock::before { content: "▣"; }
+    .glass-role-compat .fa-percent::before { content: "%"; }
+    .glass-role-compat .fa-piggy-bank::before { content: "₫"; }
+    .glass-role-compat .fa-print::before { content: "▤"; }
+    .glass-role-compat .fa-qrcode::before { content: "▦"; }
+    .glass-role-compat .fa-rotate-left::before,
+    .glass-role-compat .fa-rotate::before { content: "↶"; }
+    .glass-role-compat .fa-arrows-alt-h::before { content: "↔"; }
+    .glass-role-compat .fa-ban::before { content: "⊘"; }
+    .glass-role-compat .fa-calendar-plus::before { content: "▣"; }
+    .glass-role-compat .fa-exclamation-circle::before,
+    .glass-role-compat .fa-triangle-exclamation::before { content: "!"; }
+    .glass-role-compat .fa-eye-slash::before { content: "⊘"; }
+    .glass-role-compat .fa-hand-holding-usd::before { content: "₫"; }
+    .glass-role-compat .fa-user::before,
+    .glass-role-compat .fa-user-check::before,
+    .glass-role-compat .fa-user-plus::before { content: "♙"; }
+    .glass-role-compat .fa-user-minus::before,
+    .glass-role-compat .fa-user-slash::before { content: "×"; }
+    .glass-role-compat .fa-user-shield::before,
+    .glass-role-compat .fa-user-tie::before { content: "♙"; }
+    .glass-role-compat .fa-sign-out-alt::before { content: "↪"; }
 
     /* RESPONSIVE RULES */
     @media (max-width: 1120px) {

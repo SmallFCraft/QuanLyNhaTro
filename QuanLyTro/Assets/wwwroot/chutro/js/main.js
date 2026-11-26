@@ -1,24 +1,30 @@
 // Màn hình Chủ trọ: khung 7 tab + điều hướng. Tiện ích dùng chung ở ../shared/js/ui.js.
 const LANDLORD_TITLES = {
   dash: 'Tổng quan vận hành cơ sở',
+  de_xuat: 'Đề xuất chờ duyệt',
   phong: 'Danh sách phòng trọ',
   khach_thue: 'Quản lý người dùng & khách thuê',
   hop_dong: 'Hợp đồng & khách thuê',
   utils: 'Chốt chỉ số điện nước',
   hoa_don: 'Hóa đơn & thu tiền',
   reports: 'Thống kê doanh thu',
+  su_co: 'Quản lý sự cố',
+  tai_khoan: 'Quản lý tài khoản',
   perms: 'Quản lý phân quyền',
   cai_dat: 'Cài đặt nhận tiền & QR thanh toán'
 };
 
 const LANDLORD_LOADERS = {
-  dash: () => {}, // dashboard M4b tu nap qua refreshLandlordOverview
+  dash: () => window.loadBaoCaoTongQuan(),
+  de_xuat: () => window.loadLandlordProposals(),
   phong: () => loadRooms(),
   khach_thue: () => loadTenants(),
   hop_dong: () => loadContracts(),
   utils: () => loadUtils(),
   hoa_don: () => loadInvoices(),
   reports: () => loadReports(),
+  su_co: () => loadIncidents(),
+  tai_khoan: () => loadAccounts(),
   perms: () => loadPerms(),
   cai_dat: () => loadCaiDat()
 };

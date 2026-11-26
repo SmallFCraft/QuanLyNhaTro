@@ -46,4 +46,12 @@ public class PermissionMatrixTests
         Assert.IsFalse(DefaultPermissions.Allowed(VaiTroNguoiDung.KhachThue, ActionNames.KHACH_THUE_THEM));
         Assert.IsFalse(DefaultPermissions.Allowed(VaiTroNguoiDung.KhachThue, ActionNames.PHONG_THEM));
     }
+
+    [TestMethod]
+    public void RoleCallsInShells_ArePermittedByDefault()
+    {
+        // QuanLy reset password is exposed by its JS shell; KhachThue loads account payment config for QR.
+        Assert.IsTrue(DefaultPermissions.Allowed(VaiTroNguoiDung.QuanLy, ActionNames.TAI_KHOAN_DAT_LAI_MAT_KHAU));
+        Assert.IsTrue(DefaultPermissions.Allowed(VaiTroNguoiDung.KhachThue, ActionNames.CAU_HINH_LAY));
+    }
 }

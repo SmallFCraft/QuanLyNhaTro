@@ -356,6 +356,39 @@ public class DeXuatSuCoTests
     }
 
     [TestMethod]
+    public async Task BaoCao_DoanhThuNangCao_CoPhuKhuQuanLyXuHuongVaDuBao()
+    {
+        var managerId = await _db.ScalarT<int>("SELECT id FROM tai_khoan WHERE ten_dang_nhap='quanly'");
+        await _db.ExecuteAsync(@"INSERT INTO hoa_don (phong_id, ky_cuoc, tien_phong, tien_dien, tien_nuoc, phi_khac, tong_tien, trang_thai, ngay_dong, nguoi_thu_id)
+            VALUES (@p, '2026-08', 1000000,0,0,0,1000000,'DaThu','2026-08-20 10:00:00',@m)", new { p = _phong1Id, m = managerId });
+        await _db.ExecuteAsync(@"INSERT INTO hoa_don (phong_id, ky_cuoc, tien_phong, tien_dien, tien_nuoc, phi_khac, tong_tien, trang_thai, ngay_dong, nguoi_thu_id)
+            VALUES (@p, '2026-09', 2000000,0,0,0,2000000,'DaThu','2026-09-20 10:00:00',@m)", new { p = _phong1Id, m = managerId });
+        await _db.ExecuteAsync(@"INSERT INTO hoa_don (phong_id, ky_cuoc, tien_phong, tien_dien, tien_nuoc, phi_khac, tong_tien, trang_thai, ngay_dong, nguoi_thu_id)
+            VALUES (@p, '2026-10', 3000000,0,0,0,3000000,'DaThu','2026-10-20 10:00:00',@m)", new { p = _phong1Id, m = managerId });
+        await _db.ExecuteAsync(@"INSERT INTO hoa_don (phong_id, ky_cuoc, tien_phong, tien_dien, tien_nuoc, phi_khac, tong_tien, trang_thai)
+            VALUES (@p, '2026-11', 9000000,0,0,0,9000000,'ChuaThu')", new { p = _phong1Id });
+
+        var r = await Call(ActionNames.BaoCaoTongQuan, _chuTroToken, new { tuThang = "2026-08", denThang = "2026-10" });
+        Assert.IsTrue(r.Success, r.Message);
+        var el = ToJson(r);
+        Assert.AreEqual(6000000L, el.GetProperty("tongDoanhThu").GetInt64());
+
+        var khu = el.GetProperty("doanhThuTheoKhu");
+        Assert.AreEqual(2, khu.GetArrayLength());
+        Assert.AreEqual(_khuId, khu[0].GetProperty("khuTroId").GetInt32());
+        Assert.AreEqual(6000000L, khu[0].GetProperty("tongThu").GetInt64());
+        Assert.AreEqual(50.0, khu[0].GetProperty("tyLeLapDay").GetDouble());
+
+        var quanLy = el.GetProperty("hieuSuatQuanLy");
+        Assert.AreEqual(1, quanLy.GetArrayLength());
+        Assert.AreEqual(3, quanLy[0].GetProperty("soGiaoDichThuTien").GetInt32());
+
+        var duBao = el.GetProperty("duBaoKyToi");
+        Assert.AreEqual(2000000L, duBao.GetProperty("giaTri").GetInt64());
+        StringAssert.Contains(duBao.GetProperty("congThuc").GetString()!, "/ 3");
+    }
+
+    [TestMethod]
     public void RBAC_MaTranQuyen_M4b_DungTheoSpec()
     {
         var m4bActions = new[]
@@ -402,5 +435,126 @@ public class DeXuatSuCoTests
         Assert.IsTrue(DefaultPermissions.Allowed(VaiTroNguoiDung.KhachThue, ActionNames.SuCoTao));
         Assert.IsFalse(DefaultPermissions.Allowed(VaiTroNguoiDung.KhachThue, ActionNames.SuCoLayTheoKhu));
         Assert.IsFalse(DefaultPermissions.Allowed(VaiTroNguoiDung.KhachThue, ActionNames.BaoCaoTongQuan));
+    }
+
+    // ── DE XUAT: DUYET THUC THI NGHIEP VU GOC ────────────────────────────────
+
+    [TestMethod]
+    public async Task DeXuat_ChamDutHopDong_Duyet_ThucThiChamDut1Transaction()
+    {
+        // hợp đồng chờ nhận phòng (chưa ai ở): QuanLy gửi đề xuất chấm dứt → duyệt → ChamDut, phòng Trong
+        await _db.ExecuteAsync("UPDATE ho_so_khach_thue SET phong_id=NULL WHERE tai_khoan_id=@t", new { t = _khachId });
+        var hopDongResp = await Call(ActionNames.HopDongTao, _chuTroToken, new
+        {
+            phongId = _phong2Id, nguoiDaiDienId = _khachId,
+            ngayBatDau = "2026-12-01", ngayKetThuc = "2027-12-01", giaThue = 2200000,
+        });
+        Assert.IsTrue(hopDongResp.Success, "TAO HD: " + hopDongResp.Message);
+        var hdId = GetInt(hopDongResp, "hopDongId");
+
+        var tao = await Call(ActionNames.DeXuatTao, _quanLyToken, new
+        {
+            loai = "ChamDutHopDong",
+            noiDung = "Khach xin tra phong som",
+            hopDongId = hdId,
+            ngayBanGiao = DateOnly.FromDateTime(DateTime.Today.AddDays(35)).ToString("yyyy-MM-dd")
+        });
+        Assert.IsTrue(tao.Success, "TAO DX: " + tao.Message);
+        var dxId = GetInt(tao, "deXuatId");
+
+        var duyet = await Call(ActionNames.DeXuatDuyet, _chuTroToken, new { deXuatId = dxId, phanHoi = "Dong y" });
+        Assert.IsTrue(duyet.Success, "DUYET: " + duyet.Message);
+
+        Assert.AreEqual("ChamDut", await _db.ScalarT<string>("SELECT trang_thai FROM hop_dong WHERE id=@id", new { id = hdId }));
+        Assert.AreEqual("Trong", await _db.ScalarT<string>("SELECT trang_thai FROM phong WHERE id=@id", new { id = _phong2Id }));
+        Assert.AreEqual(0, await _db.ScalarT<int>(
+            "SELECT COUNT(*) FROM ma_nhan_phong WHERE hop_dong_id=@id AND da_su_dung=0", new { id = hdId }));
+    }
+
+    [TestMethod]
+    public async Task DeXuat_ChamDutHopDong_CungDoiTuongDangChoDuyet_BiTuChoi()
+    {
+        await _db.ExecuteAsync("UPDATE ho_so_khach_thue SET phong_id=NULL WHERE tai_khoan_id=@t", new { t = _khachId });
+        var hopDong = await Call(ActionNames.HopDongTao, _chuTroToken, new
+        {
+            phongId = _phong2Id, nguoiDaiDienId = _khachId,
+            ngayBatDau = "2026-12-01", ngayKetThuc = "2027-12-01", giaThue = 2200000,
+        });
+        Assert.IsTrue(hopDong.Success, hopDong.Message);
+        var hopDongId = GetInt(hopDong, "hopDongId");
+        var data = new
+        {
+            loai = "ChamDutHopDong", noiDung = "Yêu cầu chấm dứt",
+            hopDongId, ngayBanGiao = DateOnly.FromDateTime(DateTime.Today.AddDays(35)).ToString("yyyy-MM-dd")
+        };
+        var first = await Call(ActionNames.DeXuatTao, _quanLyToken, data);
+        Assert.IsTrue(first.Success, first.Message);
+        var duplicate = await Call(ActionNames.DeXuatTao, _quanLyToken, data);
+        Assert.IsFalse(duplicate.Success, "Không cho hai đề xuất chờ duyệt cùng loại/đối tượng");
+    }
+
+    [TestMethod]
+    public async Task DeXuat_XoaHoaDonDaThu_BiTuChoi()
+    {
+        var hoaDonId = await _db.ExecuteAsync(@"INSERT INTO hoa_don (phong_id, ky_cuoc, tien_phong, tien_dien, tien_nuoc, phi_khac, tong_tien, trang_thai)
+            VALUES (@p, '2026-11', 1000000, 0, 0, 0, 1000000, 'DaThu')", new { p = _phong1Id });
+        var resp = await Call(ActionNames.DeXuatTao, _quanLyToken, new
+        {
+            loai = "XoaHoaDon", noiDung = "Xóa hóa đơn", hoaDonId
+        });
+        Assert.IsFalse(resp.Success, "Không cho tạo đề xuất xóa hóa đơn đã thu");
+        StringAssert.Contains(resp.Message, "đã thu");
+        Assert.AreEqual(1, await _db.ScalarT<int>("SELECT COUNT(*) FROM hoa_don WHERE id=@id AND trang_thai='DaThu'", new { id = hoaDonId }));
+        Assert.AreEqual(0, await _db.ScalarT<int>("SELECT COUNT(*) FROM de_xuat WHERE loai='XoaHoaDon'"));
+    }
+
+    [TestMethod]
+    public async Task DeXuat_ChamDutHopDong_NeuNghiepVuLoi_DeXuatVanChoDuyet()
+    {
+        await _db.ExecuteAsync("UPDATE ho_so_khach_thue SET phong_id=@p WHERE tai_khoan_id=@t", new { p = _phong2Id, t = _khachId });
+        await _db.ExecuteAsync("UPDATE phong SET trang_thai='DaThue' WHERE id=@p", new { p = _phong2Id });
+        var hd = await Call(ActionNames.HopDongTao, _chuTroToken, new
+        {
+            phongId = _phong2Id, nguoiDaiDienId = _khachId,
+            ngayBatDau = "2026-12-01", ngayKetThuc = "2027-12-01", giaThue = 2200000, trangThai = "HieuLuc",
+        });
+        Assert.IsTrue(hd.Success, hd.Message);
+        var hdId = GetInt(hd, "hopDongId");
+        var dx = await Call(ActionNames.DeXuatTao, _quanLyToken, new
+        {
+            loai = "ChamDutHopDong", noiDung = "Lý do", hopDongId = hdId,
+            ngayBanGiao = DateOnly.FromDateTime(DateTime.Today.AddDays(35)).ToString("yyyy-MM-dd")
+        });
+        Assert.IsTrue(dx.Success, dx.Message);
+        var dxId = GetInt(dx, "deXuatId");
+        await _db.ExecuteAsync("UPDATE hop_dong SET trang_thai='ChamDut' WHERE id=@id", new { id = hdId });
+
+        var duyet = await Call(ActionNames.DeXuatDuyet, _chuTroToken, new { deXuatId = dxId });
+        Assert.IsFalse(duyet.Success, "Không được đánh dấu đã duyệt nếu thao tác gốc thất bại");
+        Assert.AreEqual("ChoDuyet", await _db.ScalarT<string>("SELECT trang_thai FROM de_xuat WHERE id=@id", new { id = dxId }));
+    }
+
+    [TestMethod]
+    public async Task DeXuat_ChamDutHopDong_ThieuDoiTuongHoacNgay30_BiTuChoi()
+    {
+        var r1 = await Call(ActionNames.DeXuatTao, _quanLyToken, new { loai = "ChamDutHopDong", noiDung = "Thieu hop dong id" });
+        Assert.IsFalse(r1.Success, "Thiếu hopDongId phải bị từ chối");
+
+        await _db.ExecuteAsync("UPDATE ho_so_khach_thue SET phong_id=@p WHERE tai_khoan_id=@t", new { p = _phong2Id, t = _khachId });
+        await _db.ExecuteAsync("UPDATE phong SET trang_thai='DaThue' WHERE id=@p", new { p = _phong2Id });
+        var hopDongResp = await Call(ActionNames.HopDongTao, _chuTroToken, new
+        {
+            phongId = _phong2Id, nguoiDaiDienId = _khachId,
+            ngayBatDau = "2026-12-01", ngayKetThuc = "2027-12-01", giaThue = 2200000,
+            trangThai = "HieuLuc",
+        });
+        Assert.IsTrue(hopDongResp.Success);
+        var hdId = GetInt(hopDongResp, "hopDongId");
+        var r2 = await Call(ActionNames.DeXuatTao, _quanLyToken, new
+        {
+            loai = "ChamDutHopDong", noiDung = "Ngay ban giao qua som", hopDongId = hdId,
+            ngayBanGiao = DateOnly.FromDateTime(DateTime.Today.AddDays(10)).ToString("yyyy-MM-dd")
+        });
+        Assert.IsFalse(r2.Success, "Ngày bàn giao < hôm nay + 30 phải bị từ chối ngay khi tạo đề xuất");
     }
 }

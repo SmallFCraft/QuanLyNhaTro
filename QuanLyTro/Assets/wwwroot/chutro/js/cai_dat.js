@@ -31,24 +31,24 @@ async function loadCaiDat() {
   const token = document.getElementById('cfg-api_token');
   if (token) token.value = _cauHinh?.apiToken || '';
   const clear = document.getElementById('cfg-token-clear');
-  if (clear) clear.disabled = !_cauHinh?.coApiToken;
+  if (clear) clear.disabled = !_cauHinh?.apiToken;
   const state = document.getElementById('cfg-token-state');
   if (state) {
-    state.textContent = _cauHinh?.coApiToken
+    state.textContent = _cauHinh?.apiToken
       ? 'Đã lưu token — để trống ô trên nếu không đổi.'
       : 'Chưa có token. QR tĩnh vẫn dùng được; token chỉ cần cho SePay API.';
   }
   if (_cauHinh) {
-    if (sel && _cauHinh.nganHang && !NGAN_HANG_SEPAY.includes(_cauHinh.nganHang)) {
-      sel.insertAdjacentHTML('beforeend', `<option value="${esc(_cauHinh.nganHang)}">${esc(_cauHinh.nganHang)}</option>`);
+    if (sel && _cauHinh.tenNganHang && !NGAN_HANG_SEPAY.includes(_cauHinh.tenNganHang)) {
+      sel.insertAdjacentHTML('beforeend', `<option value="${esc(_cauHinh.tenNganHang)}">${esc(_cauHinh.tenNganHang)}</option>`);
     }
-    if (sel) sel.value = _cauHinh.nganHang || '';
+    if (sel) sel.value = _cauHinh.tenNganHang || '';
     const stk = document.getElementById('cfg-so_tai_khoan');
     if (stk) stk.value = _cauHinh.soTaiKhoan || '';
     const chu = document.getElementById('cfg-chu_tai_khoan');
     if (chu) chu.value = _cauHinh.chuTaiKhoan || '';
     const tpl = document.getElementById('cfg-template_qr');
-    if (tpl) tpl.value = _cauHinh.templateQr ?? 'compact';
+    if (tpl) tpl.value = _cauHinh.mauQr ?? 'compact';
   }
   renderCauHinhPreview();
 }
@@ -78,10 +78,10 @@ async function saveCauHinh() {
   const tokenInput = document.getElementById('cfg-api_token');
   // Ô token để trống = KHÔNG gửi apiToken → server giữ token cũ.
   const payload = {
-    nganHang: form.nganHang,
+    tenNganHang: form.nganHang,
     soTaiKhoan: form.soTaiKhoan,
     chuTaiKhoan: form.chuTaiKhoan,
-    templateQr: form.templateQr
+    mauQr: form.templateQr
   };
   const token = tokenInput?.value.trim();
   if (token) payload.apiToken = token;
@@ -135,10 +135,10 @@ async function xoaApiToken() {
   const form = docFormCauHinh();
   try {
     await window.bridge.call('CAU_HINH_CAP_NHAT', {
-      nganHang: form.nganHang,
+      tenNganHang: form.nganHang,
       soTaiKhoan: form.soTaiKhoan,
       chuTaiKhoan: form.chuTaiKhoan,
-      templateQr: form.templateQr,
+      mauQr: form.templateQr,
       apiToken: ''
     });
     const input = document.getElementById('cfg-api_token');

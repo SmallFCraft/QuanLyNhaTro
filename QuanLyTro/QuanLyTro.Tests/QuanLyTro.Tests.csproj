@@ -9,10 +9,11 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageReference Include="MSTest.TestFramework" Version="3.7.0" />
     <PackageReference Include="MSTest.TestAdapter" Version="3.7.0" />
-    <PackageReference Include="MySqlConnector" Version="2.4.0" />
+    <PackageReference Include="MySqlConnector" Version="3.0.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\QuanLyTro.Shared\QuanLyTro.Shared.csproj" />
     <ProjectReference Include="..\QuanLyTro.Server\QuanLyTro.Server.csproj" />
+    <Compile Include="..\QuanLyTro.Client\Network\Bridge.cs" Link="Bridge.cs" />
   </ItemGroup>
 </Project>

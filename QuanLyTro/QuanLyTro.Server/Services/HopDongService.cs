@@ -40,6 +40,9 @@ public sealed class HopDongService
         var giaThue = AccountService.GetInt(data, "giaThue");
         var tienCoc = AccountService.GetOptionalInt(data, "tienCoc") ?? 0;
         var ghiChu = AccountService.GetString(data, "ghiChu");
+        var trangThai = AccountService.GetString(data, "trangThai") ?? "ChoNhanPhong";
+        if (trangThai is not ("ChoNhanPhong" or "HieuLuc"))
+            throw new ValidationException("Trạng thái hợp đồng khi tạo không hợp lệ.");
 
         if (!DateOnly.TryParse(ngayBatDauStr, out var ngayBatDau))
             throw new ValidationException("Ngày bắt đầu không hợp lệ (định dạng yyyy-MM-dd).");
@@ -55,19 +58,29 @@ public sealed class HopDongService
         var phong = await _rooms.RoomByIdAsync(phongId) ?? throw new NotFoundOrDeniedException();
         if (session.VaiTro == VaiTroNguoiDung.QuanLy && session.KhuTroId != Convert.ToInt32(phong["khu_tro_id"]))
             throw new NotFoundOrDeniedException();
-        // phòng phải đang trống mới lập được hợp đồng
-        if ((string)phong["trang_thai"]! != "Trong")
-            throw new BusinessRuleException("Phòng không còn trống, không thể lập hợp đồng mới.");
-        // chỉ 1 hợp đồng chưa chấm dứt mỗi phòng (phòng vẫn Trong khi hợp đồng chờ nhận phòng)
+        var phongStatus = (string)phong["trang_thai"]!;
+        if (phongStatus != "Trong")
+        {
+            var tenant = trangThai == "HieuLuc" ? await _tenants.ProfileAsync(nguoiDaiDienId) : null;
+            var isAssignedToThisRoom = tenant?["phong_id"] is not (null or DBNull) &&
+                Convert.ToInt32(tenant["phong_id"]) == phongId;
+            if (phongStatus != "DaThue" || !isAssignedToThisRoom ||
+                await _rooms.CountResidentsAsync(phongId) > Convert.ToInt32(phong["so_nguoi_toi_da"]))
+                throw new BusinessRuleException("Phòng không còn trống, không thể lập hợp đồng mới.");
+        }
+        // chỉ 1 hợp đồng chưa chấm dứt mỗi phòng (phòng có hợp đồng chờ nhận phòng vẫn là Trong)
         if (await _repo.CoHopDongChuaKetThucAsync(phongId))
             throw new BusinessRuleException("Phòng đang có hợp đồng chưa kết thúc, không thể lập hợp đồng mới.");
+        if (trangThai == "ChoNhanPhong" && await _tenants.ProfileAsync(nguoiDaiDienId) is { } representative &&
+            representative["phong_id"] is not (null or DBNull))
+            throw new BusinessRuleException("Khách đã được gán phòng; chỉ có thể lập hợp đồng khi bàn giao trực tiếp.");
 
         // HOP_DONG_TAO luôn đi kèm mã QR/PIN (BR-19) — hợp đồng bắt đầu ở trạng thái chờ nhận phòng
         var hetHanMa = DateOnly.FromDateTime(DateTime.Today).AddDays(7);
         var (hopDongId, pin) = await _repo.TaoHopDongAsync(
             phongId, nguoiDaiDienId, ngayBatDau, ngayKetThuc,
-            giaThue, tienCoc, "ChoNhanPhong", ghiChu, hetHanMa);
-        return new { hopDongId, pin, qrData = $"QLT|{hopDongId}|{pin}" };
+            giaThue, tienCoc, trangThai, ghiChu, hetHanMa, session.TaiKhoanId);
+        return new { hopDongId, pin, qrData = pin is null ? null : $"QLT|{hopDongId}|{pin}" };
     }
 
     public async Task<object> SinhQrAsync(SessionInfo session, JsonElement data)
@@ -147,12 +160,28 @@ public sealed class HopDongService
 
     public async Task<object> ChamDutAsync(SessionInfo session, JsonElement data)
     {
+        // MOD-03-03: chỉ ChuTro chấm dứt trực tiếp; QuanLy phải gửi đề xuất (MOD-04-06)
+        if (session.VaiTro != VaiTroNguoiDung.ChuTro)
+            throw new NotFoundOrDeniedException();
         var hopDongId = AccountService.GetInt(data, "hopDongId");
         var hopDong = await LayTheoQuyenAsync(session, hopDongId);
         if ((string)hopDong["trang_thai"]! is "ChamDut")
             throw new BusinessRuleException("Hợp đồng đã chấm dứt trước đó.");
-        var ghiChu = AccountService.GetString(data, "ghi_chu") ?? AccountService.GetString(data, "ghiChu");
-        await _repo.ChamDutAsync(hopDongId, ghiChu);
+        var lyDo = AccountService.GetString(data, "lyDo") ?? AccountService.GetString(data, "ly_do")
+            ?? AccountService.GetString(data, "ghiChu") ?? AccountService.GetString(data, "ghi_chu");
+        if (string.IsNullOrWhiteSpace(lyDo))
+            throw new ValidationException("Bắt buộc phải có lý do chấm dứt.");
+        lyDo = lyDo.Trim();
+        if (lyDo.Length > 255)
+            throw new ValidationException("Lý do chấm dứt tối đa 255 ký tự.");
+        var ngayBanGiaoStr = AccountService.GetString(data, "ngayBanGiao") ?? AccountService.GetString(data, "ngay_ban_giao")
+            ?? throw new ValidationException("Thiếu ngày bàn giao dự kiến.");
+        if (!DateOnly.TryParse(ngayBanGiaoStr, out var ngayBanGiao))
+            throw new ValidationException("Ngày bàn giao không hợp lệ (định dạng yyyy-MM-dd).");
+        // Luật Nhà ở 2023: báo trước tối thiểu 30 ngày
+        if (ngayBanGiao < DateOnly.FromDateTime(DateTime.Today).AddDays(30))
+            throw new ValidationException("Ngày bàn giao dự kiến phải ít nhất 30 ngày kể từ hôm nay.");
+        await _repo.ChamDutAsync(hopDongId, lyDo, ngayBanGiao, session.TaiKhoanId);
         return new { ok = true };
     }
 
@@ -244,6 +273,10 @@ public sealed class HopDongService
         var hopDongId = Convert.ToInt32(hopDong["id"]);
         if (!data.TryGetProperty("nguoiOCung", out var ds) || ds.ValueKind != JsonValueKind.Array)
             throw new ValidationException("Thiếu danh sách người ở chung (nguoiOCung).");
+        if (ds.GetArrayLength() > 2)
+            throw new ValidationException("Tối đa hai người ở chung ngoài người đại diện.");
+        var cccdDaiDien = hopDong["cccd"] as string;
+        var seen = new HashSet<string>(StringComparer.Ordinal);
 
         // mỗi người ở chung = 1 phụ lục ThemNguoi hiệu lực
         foreach (var n in ds.EnumerateArray())
@@ -258,6 +291,8 @@ public sealed class HopDongService
             if (string.IsNullOrWhiteSpace(hoTen)) throw new ValidationException("Người ở chung thiếu họ tên.");
             if (cccd is null || cccd.Length != 12 || !cccd.All(char.IsAsciiDigit))
                 throw new ValidationException($"CCCD của {hoTen} phải gồm đúng 12 chữ số.");
+            if (cccd == cccdDaiDien || !seen.Add(cccd))
+                throw new ValidationException("CCCD người ở chung không được trùng CCCD người đại diện hoặc người ở chung khác.");
             if (ngaySinhStr is null || !DateOnly.TryParse(ngaySinhStr, out var ngaySinh))
                 throw new ValidationException($"Ngày sinh của {hoTen} không hợp lệ.");
             if (ngaySinh >= DateOnly.FromDateTime(DateTime.Today))

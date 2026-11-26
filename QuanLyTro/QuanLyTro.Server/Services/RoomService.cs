@@ -106,7 +106,18 @@ public sealed class RoomService
         if (trangThai is not null && !new[] { "Trong", "DaThue", "BaoTri" }.Contains(trangThai))
             throw new ValidationException("Trạng thái phòng không hợp lệ.");
 
-        await _repo.UpdatePhongAsync(id, giaThue, soNguoiToiDa, AccountService.GetString(data, "moTa"), trangThai);
+        var soPhong = AccountService.GetString(data, "soPhong");
+        if (soPhong is not null && string.IsNullOrWhiteSpace(soPhong))
+            throw new ValidationException("Số phòng không được rỗng.");
+        try
+        {
+            await _repo.UpdatePhongAsync(id, soPhong?.Trim(), giaThue, soNguoiToiDa,
+                AccountService.GetString(data, "moTa"), trangThai);
+        }
+        catch (MySqlConnector.MySqlException ex) when (ex.Number == 1062)
+        {
+            throw new BusinessRuleException("Số phòng đã tồn tại trong khu này.");
+        }
         return new { ok = true };
     }
 

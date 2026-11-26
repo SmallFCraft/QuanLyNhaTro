@@ -109,7 +109,8 @@ function updateTenantFoot(rows) {
   foot.innerHTML = `Tổng: ${rows.length} bản ghi <span class="sep">|</span> <span class="sel-txt">Chọn: ${sel ? esc(sel.hoTen) : '—'}</span>`;
 }
 
-const tenantFields = (t, phong) => [
+const tenantFields = (t, phong, includeAccount = false) => [
+  ...(includeAccount ? [{ name: 'tenDangNhap', label: 'Tên đăng nhập', required: true }] : []),
   { name: 'hoTen', label: 'Họ tên', value: t?.hoTen ?? '', required: true },
   { name: 'ngaySinh', label: 'Ngày sinh', type: 'date', value: (t?.ngaySinh ?? '').slice(0, 10), required: true },
   { name: 'cccd', label: 'CCCD (12 số)', value: t?.cccd ?? '', required: true },
@@ -148,7 +149,7 @@ function tenantPayload(values, id) {
 async function freeRooms() {
   const phong = await window.bridge.call('PHONG_LAY_TAT_CA', {}) || [];
   return phong
-    .filter(r => (r.soNguoiHienTai ?? 0) < r.soNguoiToiDa)
+    .filter(r => r.trangThai !== 'BaoTri' && (r.soNguoiHienTai ?? 0) < r.soNguoiToiDa)
     .map(r => ({ value: String(r.id), label: `${r.soPhong} (${r.soNguoiHienTai ?? 0}/${r.soNguoiToiDa})` }));
 }
 
@@ -158,12 +159,15 @@ async function addTenant() {
     if (!phong.length) { toast('Không còn phòng trống.', 'err'); return; }
     openModal({
       title: 'Thêm người thuê',
-      fields: tenantFields(null, phong),
+      fields: tenantFields(null, phong, true),
       onSubmit: async v => {
-        const pwd = (v.matKhau || '').trim() || null;
-        await window.bridge.call('KHACH_THUE_THEM', { tenant: tenantPayload(v), plainPassword: pwd });
-        const defaultPwd = String(v.cccd || '').trim().slice(-6);
-        toast(`Đã thêm ${v.hoTen}. Đăng nhập: CCCD ${v.cccd} | MK: ${pwd || defaultPwd}`, 'ok');
+        const digits = String(v.cccd || '').replace(/\D/g, '');
+        const matKhau = (v.matKhau || '').trim() || digits.slice(-6);
+        const payload = { tenDangNhap: v.tenDangNhap, matKhau, hoTen: v.hoTen, cccd: v.cccd, ngaySinh: v.ngaySinh,
+          soDienThoai: v.soDienThoai, queQuan: v.queQuan, noiLamViec: v.noiLamViec || null,
+          phongId: Number(v.phongId), daDangKyTamTru: v.daDangKyTamTru === 'true' };
+        await window.bridge.call('KHACH_THUE_THEM', payload);
+        toast(`Đã thêm ${v.hoTen}. Đăng nhập: ${v.tenDangNhap} | MK: ${matKhau}`, 'ok');
         await loadTenants();
       }
     });
@@ -176,8 +180,17 @@ function findTenant(id) {
   return tenantCache.find(t => t.id === Number(id));
 }
 
+async function fetchTenantProfile(id) {
+  for (const room of await window.bridge.call('PHONG_LAY_TAT_CA', {}) || []) {
+    const tenants = await window.bridge.call('KHACH_THUE_LAY_THEO_PHONG', { phongId: room.id }) || [];
+    const tenant = tenants.find(x => x.id === Number(id));
+    if (tenant) return { ...tenant, soPhong: room.soPhong };
+  }
+  return (await window.bridge.call('KHACH_THUE_LAY_THEO_PHONG', { phongId: 0 }) || []).find(x => x.id === Number(id)) || findTenant(id);
+}
+
 async function editTenant(id) {
-  const t = findTenant(id);
+  const t = await fetchTenantProfile(id);
   if (!t) { toast('Vui lòng chọn người thuê cần sửa.', 'err'); return; }
   // Khách chờ gán phòng không có id phòng thật — không được build option value "null" (submit ra NaN).
   const phongOptions = t.phongId == null
@@ -188,7 +201,8 @@ async function editTenant(id) {
     fields: tenantFields(t, phongOptions),
     onSubmit: async v => {
       const pwd = (v.matKhau || '').trim() || null;
-      await window.bridge.call('KHACH_THUE_CAP_NHAT', { tenant: tenantPayload(v, t.id), plainPassword: pwd });
+      if (pwd && pwd.length < 6) throw new Error('Mật khẩu mới phải có ít nhất 6 ký tự.');
+      await window.bridge.call('KHACH_THUE_CAP_NHAT', { taiKhoanId: t.id, ...tenantPayload(v, t.id), ...(pwd ? { matKhauMoi: pwd } : {}) });
       toast('Đã lưu hồ sơ.', 'ok');
       await loadTenants();
     }
@@ -208,7 +222,7 @@ async function moveTenant(id) {
       title: `Chuyển phòng — ${t.hoTen}`,
       fields: [{ name: 'phongId', label: 'Phòng mới', type: 'select', value: target[0].value, options: target }],
       onSubmit: async v => {
-        await window.bridge.call('KHACH_THUE_CAP_NHAT', { tenant: { ...t, phongId: Number(v.phongId) }, plainPassword: null });
+        await window.bridge.call('KHACH_THUE_CHUYEN_PHONG', { taiKhoanId: t.id, phongIdMoi: Number(v.phongId) });
         toast(`Đã chuyển ${t.hoTen}.`, 'ok');
         await loadTenants();
       }
@@ -225,7 +239,7 @@ async function checkoutTenant(id) {
   if (t.phongId == null) { toast(`${t.hoTen} chưa được gán vào phòng nào.`, 'warn'); return; }
   if (!await confirmDialog(`Cho ${t.hoTen} trả phòng?`)) return;
   try {
-    await window.bridge.call('KHACH_THUE_TRA_PHONG', { khachThueId: t.id });
+    await window.bridge.call('KHACH_THUE_TRA_PHONG', { taiKhoanId: t.id });
     toast(`Đã cho ${t.hoTen} trả phòng.`, 'ok');
     await loadTenants();
   } catch (err) {
@@ -238,7 +252,7 @@ async function deleteTenant(id) {
   if (!t) { toast('Vui lòng chọn hồ sơ cần xóa.', 'err'); return; }
   if (!await confirmDialog(`Xóa hồ sơ của ${t.hoTen}? Chỉ xóa được hồ sơ đã trả phòng.`)) return;
   try {
-    await window.bridge.call('KHACH_THUE_XOA', { khachThueId: t.id });
+    await window.bridge.call('KHACH_THUE_XOA', { taiKhoanId: t.id });
     toast(`Đã xóa hồ sơ ${t.hoTen}.`, 'ok');
     await loadTenants();
   } catch (err) {
@@ -282,7 +296,7 @@ async function resetTenantPassword(id) {
   const digits = String(t.cccd || '').replace(/\D/g, '');
   const pwd = digits.length > 6 ? digits.slice(-6) : digits;
   try {
-    await window.bridge.call('KHACH_THUE_CAP_NHAT', { tenant: t, plainPassword: pwd });
+    await window.bridge.call('TAI_KHOAN_DAT_LAI_MAT_KHAU', { tenDangNhap: t.tenDangNhap, matKhauMoi: pwd });
     toast(`Đã đặt lại mật khẩu mặc định cho ${t.hoTen}.`, 'ok');
   } catch (err) {
     toast(err.message, 'err');
@@ -297,7 +311,7 @@ function timKiemNguoiThue(tuKhoa) {
     const q = (tuKhoa || '').trim();
     if (!q) { await loadTenants(); return; }
     try {
-      const ket_qua = (await window.bridge.call('KHACH_THUE_TIM_KIEM', { tuKhoa: q })) || [];
+      const ket_qua = (await window.bridge.call('KHACH_THUE_TIM_KIEM', { keyword: q })) || [];
       tenantCache = ket_qua.map(t => ({ ...t, phongId: t.phongId ?? null }));
       renderTenantRows();
     } catch (err) {

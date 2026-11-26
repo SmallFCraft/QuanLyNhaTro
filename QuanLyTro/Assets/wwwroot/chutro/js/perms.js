@@ -4,7 +4,10 @@ let _currentRole = 'QuanLy';
 let _permsDraft = new Set();
 
 const ROLE_LABELS = {
+  ChuTro: { name: 'Chủ trọ', icon: 'fa-user-cog', desc: 'Quản trị toàn hệ thống' },
   QuanLy: { name: 'Quản lý khu trọ', icon: 'fa-user-tie', desc: 'Nhân viên phụ trách vận hành' },
+  LeTan: { name: 'Lễ tân', icon: 'fa-id-card', desc: 'Duyệt lịch, gán nhân viên' },
+  NhanVien: { name: 'Nhân viên', icon: 'fa-hard-hat', desc: 'Thực hiện công việc được giao' },
   CongAn:  { name: 'Công an phường', icon: 'fa-user-shield', desc: 'Cán bộ kiểm tra cư trú' },
   KhachThue:  { name: 'Khách thuê phòng', icon: 'fa-user', desc: 'Người thuê xem hóa đơn' }
 };
@@ -35,10 +38,12 @@ function renderPermsRoleSelector() {
 }
 
 function actionsForRole(vaiTro) {
-  const map = (_permsData && (_permsData.quyenTheoVaiTro || _permsData.QuyenTheoVaiTro)) || {};
-  if (map[vaiTro]) return map[vaiTro];
-  const key = Object.keys(map).find(k => k.toLowerCase() === String(vaiTro).toLowerCase());
-  return (key && map[key]) || [];
+  const effective = _permsData?.hieuLuc || [];
+  const active = effective.filter(x => (x.vaiTro || x.VaiTro) === vaiTro).map(x => x.hanhDong || x.HanhDong).filter(Boolean);
+  if ((_permsData?.vaiTroTuyChinh || []).includes(vaiTro)) return active;
+  if (active.length) return active;
+  const defaults = _permsData?.macDinh || [];
+  return defaults.find(x => (x.vaiTro || x.VaiTro) === vaiTro)?.hanhDong || [];
 }
 
 function selectPermsRole(vaiTro) {
@@ -61,14 +66,18 @@ function renderPermsCheckboxes() {
   if (!container || !_permsData) return;
 
   const catalog = _permsData.danhSachHanhDong || _permsData.DanhSachHanhDong || [];
-
-  // Gom nhóm hanhDong theo Nhom
+  const defaults = _permsData.macDinh || [];
   const groups = {};
   catalog.forEach(item => {
     const nhom = item.nhom || item.Nhom || item.group || 'Khác';
     if (!groups[nhom]) groups[nhom] = [];
     groups[nhom].push(item);
   });
+  defaults.forEach(role => (role.hanhDong || []).forEach(code => {
+    if (!groups['Quyền hệ thống']) groups['Quyền hệ thống'] = [];
+    if (!groups['Quyền hệ thống'].some(item => (item.hanhDong || item.HanhDong) === code))
+      groups['Quyền hệ thống'].push({ hanhDong: code, moTa: code });
+  }));
 
   const html = Object.entries(groups).map(([groupName, items]) => {
     const itemsHtml = items.map(item => {
@@ -110,15 +119,24 @@ function resetPermsDraft() {
 
 async function saveRolePermissions() {
   if (!_permsData) return;
-  const list = Array.from(_permsDraft);
+  const currentRole = _currentRole;
+  const effective = _permsData.hieuLuc || [];
+  const rolePermissions = effective.filter(x => x.vaiTro === currentRole).map(x => x.hanhDong);
+  const current = new Set(rolePermissions.length || (_permsData.vaiTroTuyChinh || []).includes(currentRole)
+    ? rolePermissions
+    : _permsData.macDinh?.find(x => x.vaiTro === currentRole)?.hanhDong || []);
+  const thuHoi = [...current].filter(x => !_permsDraft.has(x));
+  const capQuyen = [..._permsDraft].filter(x => !current.has(x));
   try {
     const res = await window.bridge.call('PHAN_QUYEN_CAP_NHAT_VAI_TRO', {
-      VaiTro: _currentRole,
-      DanhSachHanhDong: list
+      VaiTro: currentRole,
+      ThuHoi: thuHoi,
+      CapQuyen: capQuyen
     });
-    if (!_permsData.quyenTheoVaiTro) _permsData.quyenTheoVaiTro = {};
-    _permsData.quyenTheoVaiTro[_currentRole] = list;
-    toast(res?.message || `Đã cập nhật phân quyền cho vai trò ${ROLE_LABELS[_currentRole]?.name || _currentRole}!`, 'ok');
+    _permsData.hieuLuc = effective.filter(x => !(x.vaiTro === currentRole && thuHoi.includes(x.hanhDong)))
+      .concat(capQuyen.map(hanhDong => ({ vaiTro: currentRole, hanhDong })));
+    _permsData.vaiTroTuyChinh = [...new Set([...(_permsData.vaiTroTuyChinh || []), currentRole])];
+    toast(res?.message || `Đã cập nhật phân quyền cho vai trò ${ROLE_LABELS[currentRole]?.name || currentRole}!`, 'ok');
   } catch (err) {
     toast(err.message, 'err');
   }

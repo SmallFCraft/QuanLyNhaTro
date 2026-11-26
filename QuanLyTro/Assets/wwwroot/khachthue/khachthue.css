@@ -237,6 +237,35 @@ body:has(> .win){height:100vh;overflow:hidden}
 .pay-check-note{color:var(--dim);font-size:11.5px;margin-top:8px;line-height:1.5}
 .pay-empty{color:var(--dim);font-size:12.5px;padding:14px 2px}
 .pay-empty i{margin-right:5px}
+.glass-role-compat .userbar,
+.glass-role-compat .tenant-topbar { background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border-bottom-color: var(--glass-border); color: var(--text); }
+.glass-role-compat .tenant-topbar .vai_tro.tenant { color: var(--green-text); background: var(--green-bg); border-color: var(--green-border); }
+.glass-role-compat .fas { display: inline-block; width: 1.1em; text-align: center; font-style: normal; font-family: var(--font-sans); }
+.glass-role-compat .fas::before { display: inline-block; }
+.glass-role-compat .fa-exclamation::before,
+.glass-role-compat .fa-exclamation-triangle::before { content: "!"; }
+.glass-role-compat .fa-external-link-alt::before { content: "↗"; }
+.glass-role-compat .fa-calendar-days::before { content: "▣"; }
+.glass-role-compat .fa-money-bill-wave::before { content: "₫"; }
+.glass-role-compat .fa-bolt::before { content: "ϟ"; }
+.glass-role-compat .fa-tint::before { content: "◈"; }
+.glass-role-compat .fa-file-signature::before { content: "▤"; }
+.glass-role-compat .fa-chart-column::before { content: "▥"; }
+.glass-role-compat .fa-file-invoice-dollar::before { content: "₫"; }
+.glass-role-compat .fa-door-closed::before { content: "▣"; }
+.glass-role-compat .fa-wifi::before { content: "⌁"; }
+.glass-role-compat .fa-qrcode::before { content: "▦"; }
+.glass-role-compat .fa-copy::before { content: "▣"; }
+.glass-role-compat .fa-rotate::before { content: "↶"; }
+.glass-role-compat .fa-list::before { content: "☷"; }
+.glass-role-compat .fa-chevron-left::before { content: "‹"; }
+.glass-role-compat .fa-chevron-right::before { content: "›"; }
+.glass-role-compat .fa-stop::before { content: "■"; }
+.glass-role-compat .fa-camera::before { content: "◉"; }
+.glass-role-compat .fa-circle-info::before { content: "ⓘ"; }
+.glass-role-compat .fa-circle-check::before { content: "✓"; }
+.glass-role-compat .fa-mobile-screen::before { content: "▯"; }
+
 @media (max-width:640px){
   .pay-qr-img{width:100%;max-width:260px;margin:0 auto}
 }

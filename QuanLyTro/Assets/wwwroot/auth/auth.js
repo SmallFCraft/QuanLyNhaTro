@@ -93,13 +93,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const p = $('loginPassword');
     p.type = p.type === 'password' ? 'text' : 'password';
   });
-  document.querySelectorAll('.demo-role-link').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const u = btn.dataset.demoUser;
-      $('loginUsername').value = u;
-      $('loginPassword').value = u;
-      showError('loginError');
-      $('btnLogin').focus();
-    });
+  $('demoAccountSelect').addEventListener('change', e => {
+    const u = e.target.value;
+    if (!u) return;
+    $('loginUsername').value = u;
+    $('loginPassword').value = u;
+    showError('loginError');
+    $('btnLogin').focus();
   });
 });

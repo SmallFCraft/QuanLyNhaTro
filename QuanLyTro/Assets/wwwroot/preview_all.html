@@ -213,7 +213,7 @@
       bottom: 80px; right: 18%;
       background: radial-gradient(circle, rgba(255, 255, 255, 0.92) 0%, rgba(224, 242, 254, 0.35) 65%, transparent 100%);
     }
-    .stage-wrapper { position: relative; z-index: 1; min-height: calc(100vh - var(--switcher-h)); transition: padding 0.2s; }
+    .stage-wrapper { position: relative; z-index: 1; min-height: calc(100vh - var(--switcher-h)); }
     body.sim-mobile .stage-wrapper {
       padding: 18px 12px 28px;
       display: flex;
@@ -777,7 +777,6 @@
       -webkit-backdrop-filter: var(--glass-blur);
       border: 1px solid var(--glass-border);
       outline: 1px solid rgba(245, 158, 11, 0.28);
-      border-left: 4px solid #F59E0B;
       border-radius: var(--radius-md);
       box-shadow: var(--glass-shadow);
       padding: 13px 16px;
