@@ -31,6 +31,24 @@ public class UiContractTests
     }
 
     [TestMethod]
+    public void Login_DemoDropdown_IncludesTenantAccount()
+    {
+        var html = File.ReadAllText(Path.Combine(FindWwwroot(), "auth", "index.html"));
+        StringAssert.Contains(html, "<option value=\"100000000001\"", "Tài khoản khách thuê demo phải có trong dropdown");
+    }
+
+    [TestMethod]
+    public void Client_StartsOnPublicBookingPage()
+    {
+        var host = File.ReadAllText(Path.Combine(FindWwwroot(), "..", "..", "QuanLyTro.Client", "Form1.cs"));
+        StringAssert.Contains(host, "Navigate(\"https://app.quanlytro.local/datlich.html\")", "Trang đầu phải là đặt lịch public");
+        StringAssert.Contains(host, "https://app.quanlytro.local/datlich.html\"");
+        var booking = File.ReadAllText(Path.Combine(FindWwwroot(), "datlich.html"));
+        StringAssert.Contains(booking, "data-goto=\"s01\"");
+        StringAssert.Contains(booking, "auth/index.html");
+    }
+
+    [TestMethod]
     public void BridgeJs_UsesRequestId_OverWebView2()
     {
         var js = File.ReadAllText(Path.Combine(FindWwwroot(), "shared", "js", "bridge.js"));
