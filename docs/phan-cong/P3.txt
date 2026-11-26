@@ -1,0 +1,195 @@
+=====================================================================
+NHIỆM VỤ THÀNH VIÊN 3 — SPRINT M4b: ĐỀ XUẤT DUYỆT + SỰ CỐ + THỐNG KÊ
+Dự án: QuanLyNhaTro — Quản lý phòng trọ phường Ngũ Hành Sơn, TP Đà Nẵng
+Repo:  https://github.com/SmallFCraft/QuanLyNhaTro
+=====================================================================
+
+## 1. BỐI CẢNH KIẾN TRÚC (đọc kỹ trước khi code)
+
+Dự án là hệ thống client-server TCP cho môn Lập trình mạng, gồm 4 project:
+
+- QuanLyTro/QuanLyTro.Shared   — giao thức dùng chung: ActionNames.cs (danh sách
+  action), DefaultPermissions.cs (ma trận quyền RBAC), RequestPacket/ResponsePacket
+  (gói tin JSON), JsonDefaults (camelCase).
+- QuanLyTro/QuanLyTro.Server   — console .NET 8, TCP listener cổng 8888. Toàn bộ
+  nghiệp vụ nằm ở đây: Network/RequestRouter.cs (điều phối), Services/ (logic),
+  Repositories/ (SQL), Data/Database.cs (ADO.NET MySqlConnector),
+  Data/SchemaInitializer.cs (tạo bảng idempotent bằng CREATE TABLE IF NOT EXISTS),
+  Security/ (đăng nhập PBKDF2, session token).
+- QuanLyTro/QuanLyTro.Client   — WinForms + WebView2. Giao diện là HTML/CSS/JS
+  trong QuanLyTro/Assets/wwwroot/, load qua https://app.quanlytro.local. Client
+  KHÔNG có logic nghiệp vụ — mọi tính toán nằm ở server.
+- QuanLyTro/QuanLyTro.Tests    — MSTest, DB riêng quanly_nhatro_test.
+
+Luồng một request:
+  JS (bridge.js postMessage requestId) → Form1.OnWebMessage (gắn token session)
+  → TCP packet JSON 1 dòng → RequestRouter.HandleAsync:
+      (1) action phải có trong DefaultPermissions.AllActionNames, không thì Deny
+      (2) action public (PublicActions) không cần token, còn lại bắt buộc token
+          hợp lệ → SessionInfo (chứa TaiKhoanId, VaiTro, KhuTroId — SCOPE KHU
+          LUÔN LẤY TỪ SESSION, KHÔNG TỪ PAYLOAD)
+      (3) DefaultPermissions.Allowed(vaiTro, action) — deny-by-default, action
+          mới phải thêm vào BuildMatrix thì vai trò mới gọi được
+      (4) dispatch qua switch → service method → repository → MySQL
+  → ResponsePacket { requestId, Success, Message, Data } trả về cùng requestId.
+
+GIAO THỨC BẮT BUỘC: JSON camelCase, mỗi packet 1 dòng kết thúc \n, mỗi request
+bắt buộc có requestId (GUID), khung giới hạn 262144 byte/packet.
+
+## 2. MÔI TRƯỜNG + CHẠY DỰ ÁN
+
+Yêu cầu máy: .NET 8 SDK, MySQL 8 (Laragon — E:\Apps\laragon), Visual Studio 2022
+hoặc VS Code.
+
+1. git clone https://github.com/SmallFCraft/QuanLyNhaTro
+   cd QuanLyNhaTro
+   git checkout -b feat/m4-de-xuat-su-co   <-- LÀM TRÊN NHÁNH NÀY
+2. Bật MySQL trong Laragon (Start All). Server TỰ TẠO DB quanly_nhatro + schema
+   + seed tài khoản demo lần đầu chạy.
+3. Chạy server:    dotnet run --project QuanLyTro/QuanLyTro.Server
+4. Chạy client:    dotnet run --project QuanLyTro/QuanLyTro.Client
+5. Chạy test:      dotnet test QuanLyTro/QuanLyTro.Tests
+
+TÀI KHOẢN DEMO:
+  chutro/chutro — Chủ trọ toàn quyền; quanly/quanly — Quản lý khu được gán;
+  letan/letan, nhanvien/nhanvien, congan/congan; khách thuê tự đăng ký CCCD.
+
+LỖI THƯỜNG GẶP:
+- MSB3021/MSB3027 file locked → tắt process QuanLyTro.exe/Server.exe chạy dở.
+- "Parameter '@xxx' must be defined" → AllowUserVariables=True đã có trong
+  ServerOptions.cs — đừng xóa.
+- INSERT trả id → cmd.LastInsertedId (Data/Database.cs đã xử lý sẵn).
+- Null MySQL: so sánh `is null or DBNull`.
+
+## 3. NHIỆM VỤ CỤ THỂ
+
+### 3a. Thêm ActionNames (QuanLyTro.Shared/Protocol/ActionNames.cs)
+public const string DeXuatTao = "DE_XUAT_TAO";
+public const string DeXuatLayTatCa = "DE_XUAT_LAY_TAT_CA";
+public const string DeXuatDuyet = "DE_XUAT_DUYET";
+public const string DeXuatTuChoi = "DE_XUAT_TU_CHOI";
+public const string SuCoTao = "SU_CO_TAO";
+public const string SuCoLayTheoKhu = "SU_CO_LAY_THEO_KHU";
+public const string SuCoCapNhatTrangThai = "SU_CO_CAP_NHAT_TRANG_THAI";
+public const string BaoCaoTongQuan = "BAO_CAO_TONG_QUAN";
+
+### 3b. Schema mới (QuanLyTro.Server/Data/SchemaInitializer.cs)
+
+de_xuat (
+  id PK AUTO_INCREMENT,
+  loai ENUM('ChamDutHopDong','SuaGia','MuaSam','SuaChuaLon','Khac') NOT NULL,
+  noi_dung VARCHAR(1000) NOT NULL,
+  nguoi_gui_id FK -> tai_khoan,
+  khu_tro_id FK -> khu_tro,
+  trang_thai ENUM('ChoDuyet','DaDuyet','TuChoi') DEFAULT 'ChoDuyet',
+  nguoi_duyet_id FK -> tai_khoan NULL, phan_hoi VARCHAR(500) NULL,
+  tao_luc DATETIME DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_dx_tt (trang_thai)
+)
+
+su_co (
+  id PK AUTO_INCREMENT,
+  phong_id FK -> phong,
+  nguoi_bao_cao_id FK -> tai_khoan,
+  muc_do ENUM('Thap','TrungBinh','Cao','KhanCap') NOT NULL DEFAULT 'TrungBinh',
+  trang_thai ENUM('Moi','DangXuLy','DaXuLy') DEFAULT 'Moi',
+  mo_ta VARCHAR(1000) NOT NULL,
+  ket_qua VARCHAR(1000) NULL,
+  tao_luc DATETIME DEFAULT CURRENT_TIMESTAMP, xu_ly_xong_luc DATETIME NULL,
+  INDEX idx_sc_mucdo (muc_do), INDEX idx_sc_tt (trang_thai)
+)
+
+### 3c. Service + Repository (mới: Services/DeXuatService.cs, Services/SuCoService.cs, Services/BaoCaoService.cs + repositories)
+Pattern mẫu: Services/TenantService.cs + Repositories/TenantRepository.cs — đọc
+trước khi viết (JsonElement, ValidationException, NotFoundOrDeniedException,
+scope khu từ session.KhuTroId).
+
+Nghiệp vụ:
+- DE_XUAT_TAO: QuanLy/NhanVien/KhachThue gửi (khu_tro_id suy từ phòng/người gửi,
+  KHÔNG tin payload). ChuTro không tự gửi cho chính mình duyệt.
+- DE_XUAT_LAY_TAT_CA: ChuTro thấy tất cả; QuanLy thấy đề xuất khu mình + của
+  chính mình; người khác thấy của mình gửi. Đánh dấu trạng thái, badge đếm
+  ChoDuyet cho dashboard chủ trọ.
+- DE_XUAT_DUYET / DE_XUAT_TU_CHOI { deXuatId, phanHoi? }: CHỈ ChuTro. Chuyển
+  trạng thái + ghi người duyệt.
+- SU_CO_TAO: mọi vai trò có token đều được báo sự cố phòng (KhachThue chỉ báo
+  phòng mình đang ở).
+- SU_CO_LAY_THEO_KHU { khuTroId? }: mặc định khu của session (QuanLy) hoặc tất
+  cả (ChuTro). Sắp xếp: KhanCap trước, rồi theo tao_luc giảm dần.
+- SU_CO_CAP_NHAT_TRANG_THAI { suCoId, trangThai, ketQua? }: ChuTro/QuanLy (khu
+  mình). DaXuLy ghi xu_ly_xong_luc.
+- BAO_CAO_TONG_QUAN { tuThang, denThang } (CHỈ ChuTro): trả {
+  tongKhu, tongPhong, phongTrong, phongDangThue, phongBaoTri, tyLeLapDay,
+  tongHoaDonChuaThu, doanhThu6Thang: [{ kyCuoc, tongThu }] }. QUAN TRỌNG: nếu
+  QuanLy gọi action này → từ chối (chỉ ChuTro thấy tiền). Khi bảng hoa_don của
+  Người 2 chưa merge, doanh thu trả mảng rỗng — code phòng nhánh không crash.
+
+### 3d. Dispatch + RBAC
+- RequestRouter.cs: thêm 8 case.
+- DefaultPermissions.cs BuildMatrix:
+  ChuTro: tất cả 8.
+  QuanLy: DE_XUAT_TAO/LAY_TAT_CA, SU_CO_* (khu mình), KHÔNG có BAO_CAO_TONG_QUAN.
+  NhanVien: DE_XUAT_TAO, SU_CO_TAO/LAY_THEO_KHU.
+  KhachThue: DE_XUAT_TAO, SU_CO_TAO (phòng mình).
+  LeTan: SU_CO_TAO/LAY_THEO_KHU. CongAn: không có action nào nhóm này.
+
+### 3e. UI (wire cả 2 phía — phần này là mảng của bạn)
+- quanly/index.html + quanly/main.js: KHUNG SẴN — id managerRoomGrid (lưới phòng
+  từ PHONG_LAY_TAT_CA), managerIncidentsList (sự cố khu), managerProposalsCard
+  (đề xuất của mình), KPI mgKpiPhong/mgKpiDangThue/mgKpiTrong/mgKpiKhu.
+  quanly/main.js đã có khung loadOverview — nối thêm gọi SU_CO_LAY_THEO_KHU,
+  DE_XUAT_LAY_TAT_CA render vào các card đó; thêm nút "Báo sự cố" mở modal
+  (dùng UIChrome.openModal có sẵn trong shared/js/chrome.js).
+- chutro/index.html: card landlordProposalsCard (bảng đề xuất chờ duyệt, id
+  landlordProposalsBody, badge pendingProposalBadge) — render + 2 nút Duyệt/Từ
+  chối gọi action; dashboard hiện KPI từ BAO_CAO_TONG_QUAN thay số cứng;
+  biểu đồ doanh thu 6 tháng (revenueLineChart) + donut phòng (roomDonutChart):
+  Chart.js CDN đã bị bỏ trong template — TỰ VẼ SVG đơn giản (giống biểu đồ
+  khachthue/js/khach_thue.js renderUtilCharts) HOẶC thêm lại thẻ CDN Chart.js ở
+  head (quyết định của bạn, ghi rõ trong PR).
+- khachthue: thêm nút "Báo sự cố" (btnTenantReportIssue ĐÃ CÓ trong template)
+  gọi SU_CO_TAO.
+
+## 4. TEST (QuanLyTro.Tests — bắt buộc có, DB quanly_nhatro_test)
+
+Viết DeXuatSuCoTests.cs theo mẫu TenantTests.cs. Ít nhất:
+- QuanLy gửi đề xuất → ChuTro duyệt → trạng thái DaDuyet + người duyệt đúng
+- QuanLy gọi BAO_CAO_TONG_QUAN → bị từ chối
+- KhachThue báo sự cố phòng mình → thấy trong SU_CO_LAY_THEO_KHU; báo phòng
+  người khác → bị từ chối
+- Sự cố KhanCap xếp đầu danh sách
+- QuanLy cập nhật trạng thái sự cố khu khác → bị từ chối
+- Badge đếm ChoDuyet đúng số bản ghi
+
+## 5. TIÊU CHÍ HOÀN THÀNH (Definition of Done)
+
+[ ] dotnet test QuanLyTro/QuanLyTro.Tests — toàn bộ PASS (kể cả test cũ)
+[ ] Flow thật qua client: quanly gửi đề xuất + báo sự cố → đăng nhập chutro thấy
+    badge đếm → duyệt/từ chối → quanly thấy phản hồi; KPI + biểu đồ dashboard
+    chutro hiển thị số thật từ DB (không còn số cứng)
+[ ] Tất cả action trả Data JSON camelCase đúng tên trường
+[ ] Không sửa file ngoài phạm vi (mục 6)
+[ ] Commit tiếng Việt KHÔNG dấu, mỗi commit một ý, KHÔNG Co-Authored-By hay
+    attribution Claude/Anthropic
+[ ] git push origin feat/m4-de-xuat-su-co + Pull Request về main, thân PR liệt
+    kê action + cách test
+
+## 6. PHẠM VI FILE ĐƯỢC ĐỤNG
+
+ĐƯỢC:
+  QuanLyTro.Shared/Protocol/ActionNames.cs (thêm const)
+  QuanLyTro.Shared/Protocol/DefaultPermissions.cs (thêm quyền)
+  QuanLyTro.Server/Services/DeXuatService.cs, SuCoService.cs, BaoCaoService.cs (mới)
+  QuanLyTro.Server/Repositories/DeXuatRepository.cs, SuCoRepository.cs (mới)
+  QuanLyTro.Server/Data/SchemaInitializer.cs (thêm bảng)
+  QuanLyTro.Server/Network/RequestRouter.cs (thêm case)
+  QuanLyTro.Tests/DeXuatSuCoTests.cs (mới)
+  QuanLyTro/Assets/wwwroot/quanly/ (index.html + main.js)
+  QuanLyTro/Assets/wwwroot/khachthue/js/khach_thue.js (CHỈ phần nút báo sự cố —
+    sửa nhỏ, không đụng logic hóa đơn/QR của người khác)
+KHÔNG ĐỤNG: chutro/js/dash.js, reports.js (nếu cần sửa cho dashboard → BÁO
+LEADER); chutro/index.html chỉ được sửa phần landlordProposalsCard + phần hiển
+thị KPI dashboard, không đụng pane nghiệp vụ khác; Services của người khác;
+Program.cs.
+
+GẶP CHẬN GAI → DỪNG, BÁO LEADER, không tự đổi tên action/field.

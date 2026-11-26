@@ -1,0 +1,193 @@
+=====================================================================
+NHIỆM VỤ THÀNH VIÊN 1 — SPRINT M3: HỢP ĐỒNG + QR/PIN NHẬN PHÒNG
+Dự án: QuanLyNhaTro — Quản lý phòng trọ phường Ngũ Hành Sơn, TP Đà Nẵng
+Repo:  https://github.com/SmallFCraft/QuanLyNhaTro
+=====================================================================
+
+## 1. BỐI CẢNH KIẾN TRÚC (đọc kỹ trước khi code)
+
+Dự án là hệ thống client-server TCP cho môn Lập trình mạng, gồm 4 project:
+
+- QuanLyTro/QuanLyTro.Shared   — giao thức dùng chung: ActionNames.cs (danh sách
+  action), DefaultPermissions.cs (ma trận quyền RBAC), RequestPacket/ResponsePacket
+  (gói tin JSON), JsonDefaults (camelCase).
+- QuanLyTro/QuanLyTro.Server   — console .NET 8, TCP listener cổng 8888. Toàn bộ
+  nghiệp vụ nằm ở đây: Network/RequestRouter.cs (điều phối), Services/ (logic),
+  Repositories/ (SQL), Data/Database.cs (ADO.NET MySqlConnector),
+  Data/SchemaInitializer.cs (tạo bảng idempotent bằng CREATE TABLE IF NOT EXISTS),
+  Security/ (đăng nhập PBKDF2, session token).
+- QuanLyTro/QuanLyTro.Client   — WinForms + WebView2. Giao diện là HTML/CSS/JS
+  trong QuanLyTro/Assets/wwwroot/, load qua https://app.quanlytro.local. Client
+  KHÔNG có logic nghiệp vụ — mọi tính toán nằm ở server.
+- QuanLyTro/QuanLyTro.Tests    — MSTest, DB riêng quanly_nhatro_test.
+
+Luồng một request:
+  JS (bridge.js postMessage requestId) → Form1.OnWebMessage (gắn token session)
+  → TCP packet JSON 1 dòng → RequestRouter.HandleAsync:
+      (1) action phải có trong DefaultPermissions.AllActionNames, không thì Deny
+      (2) action public (PublicActions) không cần token, còn lại bắt buộc token
+          hợp lệ → SessionInfo (chứa TaiKhoanId, VaiTro, KhuTroId — SCOPE KHU
+          LUÔN LẤY TỪ SESSION, KHÔNG TỪ PAYLOAD)
+      (3) DefaultPermissions.Allowed(vaiTro, action) — deny-by-default, action
+          mới phải thêm vào BuildMatrix thì vai trò mới gọi được
+      (4) dispatch qua switch → service method → repository → MySQL
+  → ResponsePacket { requestId, Success, Message, Data } trả về cùng requestId.
+
+GIAO THỨC BẮT BUỘC: JSON camelCase, mỗi packet 1 dòng kết thúc \n, mỗi request
+bắt buộc có requestId (GUID), khung giới hạn 262144 byte/packet.
+
+## 2. MÔI TRƯỜNG + CHẠY DỰ ÁN
+
+Yêu cầu máy: .NET 8 SDK, MySQL 8 (Laragon — E:\Apps\laragon), Visual Studio 2022
+hoặc VS Code.
+
+1. git clone https://github.com/SmallFCraft/QuanLyNhaTro
+   cd QuanLyNhaTro
+   git checkout -b feat/m3-hop-dong        <-- LÀM TRÊN NHÁNH NÀY
+2. Bật MySQL trong Laragon (Start All). Server TỰ TẠO DB quanly_nhatro + schema
+   + seed tài khoản demo lần đầu chạy.
+3. Chạy server:    dotnet run --project QuanLyTro/QuanLyTro.Server
+4. Chạy client:    dotnet run --project QuanLyTro/QuanLyTro.Client
+5. Chạy test:      dotnet test QuanLyTro/QuanLyTro.Tests
+
+TÀI KHOẢN DEMO (đăng nhập màn hình login của client):
+  chutro/chutro  — Chủ trọ, toàn quyền
+  quanly/quanly  — Quản lý, chỉ thấy khu được gán
+  letan/letan, nhanvien/nhanvien, congan/congan
+  Khách thuê: đăng ký tự do bằng số CCCD 12 số ngay trên màn login (tab
+  "Chưa có tài khoản? Đăng ký khách thuê").
+
+LỖI THƯỜNG GẶP:
+- MSB3021/MSB3027 file locked → tắt QuanLyTro.exe / QuanLyTro.Server.exe đang
+  chạy rồi build lại.
+- "Parameter '@xxx' must be defined" → SQL dùng biến @tên; thêm
+  AllowUserVariables=True vào connection string (đã có sẵn trong
+  ServerOptions.cs — đừng xóa).
+- INSERT không trả id → dùng cmd.LastInsertedId (xem ExecuteAsync trong
+  Data/Database.cs — đã xử lý sẵn, cứ dùng đúng helper).
+- Kiểm tra null MySQL: so sánh `is null or DBNull` — đừng Convert.ToInt32(null).
+
+## 3. NHIỆM VỤ CỤ THỂ
+
+### 3a. Thêm ActionNames (QuanLyTro.Shared/Protocol/ActionNames.cs)
+public const string HopDongTao = "HOP_DONG_TAO";
+public const string HopDongGiaHan = "HOP_DONG_GIA_HAN";
+public const string HopDongChamDut = "HOP_DONG_CHAM_DUT";
+public const string HopDongLayTatCa = "HOP_DONG_LAY_TAT_CA";
+public const string HopDongSinhQr = "HOP_DONG_SINH_QR";
+public const string PhuLucLay = "PHU_LUC_LAY";
+public const string PhuLucCapNhat = "PHU_LUC_CAP_NHAT";
+public const string KhachThueNhanPhongQr = "KHACH_THUE_NHAN_PHONG_QR";
+
+### 3b. Schema mới (QuanLyTro.Server/Data/SchemaInitializer.cs)
+Thêm 2 bảng, viết theo đúng phong cách bảng có sẵn (CREATE TABLE IF NOT EXISTS,
+charset utf8mb4, FK tới phong/tai_khoan, index tìm kiếm):
+
+hop_dong (
+  id PK AUTO_INCREMENT,
+  phong_id       FK -> phong, UNIQUE khi đang hiệu lực (một phòng 1 HĐ chính)
+  nguoi_dai_dien_id FK -> ho_so_khach_thue
+  ngay_bat_dau DATE, ngay_ket_thuc DATE,
+  gia_thue BIGINT, tien_coc BIGINT,
+  trang_thai ENUM('ChoNhanPhong','HieuLuc','HetHan','ChamDut') NOT NULL DEFAULT 'ChoNhanPhong',
+  ghi_chu VARCHAR(500) NULL,
+  tao_luc DATETIME DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_hd_phong (phong_id), INDEX idx_hd_tt (trang_thai)
+)
+
+ma_nhan_phong (
+  id PK AUTO_INCREMENT,
+  hop_dong_id FK -> hop_dong,
+  pin VARCHAR(8) NOT NULL,          -- 8 chữ số, sinh ngẫu nhiên
+  qr_data VARCHAR(255) NOT NULL,    -- chuỗi nhúng QR (vd "QLT|<hopDongId>|<pin>")
+  da_su_dung TINYINT(1) DEFAULT 0,  -- BR-19: mã DÙNG MỘT LẦN
+  het_han DATETIME NOT NULL,        -- ví dụ 48h kể từ tạo
+  UNIQUE KEY uk_mnp_qr (qr_data)
+)
+
+phu_luc_hop_dong (
+  id PK AUTO_INCREMENT,
+  hop_dong_id FK -> hop_dong,
+  loai ENUM('GiaHan','SuaGia','ThemNguoi','TraPhongSom') NOT NULL,
+  noi_dung VARCHAR(1000) NOT NULL,
+  ngay_ap_dung DATE,
+  trang_thai ENUM('Nhap','HieuLuc') DEFAULT 'Nhap'
+)
+
+### 3c. Service + Repository (mới: Services/HopDongService.cs, Repositories/HopDongRepository.cs)
+Viết theo pattern có sẵn — mở Services/TenantService.cs + Repositories/
+TenantRepository.cs đọc trước khi viết (cách đọc JsonElement data, cách ném
+ValidationException/NotFoundOrDeniedException, cách dùng TransactionHelper).
+
+Nghiệp vụ:
+- HOP_DONG_TAO (ChuTro + QuanLy trong khu mình): chỉ tạo được khi phòng đang
+  'Trong'. Tạo hợp đồng ChoNhanPhong + sinh PIN 8 số + qr_data, trả về { hopDongId, pin, qrData }.
+- HOP_DONG_SINH_QR: trả lại mã để in phiếu (ChuTro/QuanLy).
+- KHACH_THUE_NHAN_PHONG_QR (PUBLIC cho vai trò KhachThue — đã đăng nhập): nhận
+  { tokenOrPin } — tìm ma_nhan_phong còn hạn + chưa dùng; đúng thì trong MỘT
+  TRANSACTION: mã đánh dấu da_su_dung=1, hợp đồng → HieuLuc, phòng → DaThue,
+  ghi lich_su_cu_tru (bảng đã có sẵn) cho khách đại diện. Sai/hết hạn/mã đã dùng
+  → lỗi rõ ràng.
+- HOP_DONG_GIA_HAN: cập nhật ngay_ket_thuc + tạo phụ lục GiaHan. HOP_DONG_CHAM_DUT:
+  hợp đồng → ChamDut, phòng → Trong, các mã nhận phòng chưa dùng bị vô hiệu.
+- HOP_DONG_LAY_TAT_CA: danh sách kèm số phòng + tên khách (JOIN); QuanLy chỉ
+  thấy hợp đồng phòng trong khu của mình (scope từ session.KhuTroId).
+- PHU_LUC_LAY / PHU_LUC_CAP_NHAT theo hopDongId.
+
+### 3d. Dispatch + RBAC
+- RequestRouter.cs: thêm 8 case trong switch, gọi service tương ứng (KHACH_THUE_
+  NHAN_PHONG_QR vẫn cần token — chỉ KHÔNG public với khách vãng lai).
+- DefaultPermissions.cs BuildMatrix: ChuTro được hết; QuanLy được tất cả trừ
+  gì tách riêng; KhachThue CHỈ có KHACH_THUE_NHAN_PHONG_QR trong nhóm này;
+  LeTan/NhanVien/CongAn không có action nào của hợp đồng.
+
+### 3e. UI
+- QuanLyTro/Assets/wwwroot/shared/hopdong.html: khung tĩnh có sẵn — wire JS gọi
+  HOP_DONG_LAY_TAT_CA render bảng, nút Lập hợp đồng mở modal gọi HOP_DONG_TAO,
+  hiển thị PIN/QR sau khi tạo.
+- khachthue/index.html tab Nhận phòng: JS đã viết sẵn (QuanLyTro/Assets/wwwroot/
+  khachthue/js/khach_thue.js — dùng jsqr.min.js giải QR từ ảnh/camera, hoặc ô
+  PIN 8 số) gọi KHACH_THUE_NHAN_PHONG_QR — KHÔNG cần sửa gì nếu server trả đúng
+  hợp đồng. Chỉ test lại.
+- chutro/index.html pane tab-hop_dong + tab-perms: JS cũ (chutro/js/hop_dong.js,
+  perms.js) đã gọi các action trên — server trả đúng là chạy.
+
+## 4. TEST (QuanLyTro.Tests — bắt buộc có, DB quanly_nhatro_test)
+
+Viết HopDongTests.cs theo mẫu TenantTests.cs (khởi tạo Database test, xóa dữ liệu
+trong [TestInitialize]). Ít nhất:
+- ChuTro tạo hợp đồng phòng Trống thành công → phòng chuyển ChoNhanPhong có mã
+- QuanLy khu khác tạo hợp đồng phòng khu khác → bị từ chối
+- KhachThue kích hoạt PIN đúng → HĐ HieuLuc + phòng DaThue + mã bị khóa (dùng
+  lần 2 phải lỗi)
+- KhachThue gọi HOP_DONG_TAO → bị từ chối
+- Chấm dứt hợp đồng → phòng Trở lại Trong
+
+## 5. TIÊU CHÍ HOÀN THÀNH (Definition of Done)
+
+[ ] dotnet test QuanLyTro/QuanLyTro.Tests — toàn bộ PASS (kể cả test cũ)
+[ ] Flow thật qua client: đăng nhập chutro → lập HĐ phòng → đăng nhập khách →
+    quét QR/Nhập PIN → phòng chuyển DaThue, HĐ HieuLuc
+[ ] Tất cả action trả Data JSON camelCase đúng tên trường như mô tả
+[ ] Không sửa file ngoài phạm vi (xem mục 6)
+[ ] Commit tiếng Việt KHÔNG dấu, mỗi commit một ý (feat: ...), KHÔNG thêm dòng
+    Co-Authored-By hay bất kỳ attribution Claude/Anthropic nào
+[ ] git push origin feat/m3-hop-dong rồi tạo Pull Request về main, tiêu đề mô
+    tả rõ, phần thân liệt kê action đã thêm + cách test
+
+## 6. PHẠM VI FILE ĐƯỢC ĐỤNG (còn lại cấm để tránh conflict với người khác)
+
+ĐƯỢC:
+  QuanLyTro.Shared/Protocol/ActionNames.cs (thêm const)
+  QuanLyTro.Shared/Protocol/DefaultPermissions.cs (thêm quyền)
+  QuanLyTro.Server/Services/HopDongService.cs (mới)
+  QuanLyTro.Server/Repositories/HopDongRepository.cs (mới)
+  QuanLyTro.Server/Data/SchemaInitializer.cs (thêm bảng)
+  QuanLyTro.Server/Network/RequestRouter.cs (thêm case)
+  QuanLyTro.Tests/HopDongTests.cs (mới)
+  QuanLyTro/Assets/wwwroot/shared/hopdong.html
+KHÔNG ĐỤNG: Services/Repositories của người khác, chutro/js/*, quanly/, letan/,
+nhanvien/, congan/, datlich.html, Program.cs (trừ khi leader đồng ý).
+
+GẶP CHẬN GAI/NGHĨ LỖI DESIGN → DỪNG, BÁO LEADER (hỏi qua nhóm), đừng tự đổi
+hợp đồng action vì người khác đang dựng UI dựa trên đúng các tên này.

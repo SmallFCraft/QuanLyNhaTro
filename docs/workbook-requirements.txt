@@ -1,0 +1,513 @@
+Sheets: ['Tổng quan', 'AD - ChuTro', 'MG - QuanLy', 'LT - LeTan', 'NV - NhanVien', 'TN - KhachThue', 'PM - CongAn', 'Phan quyen & IO', 'Ma tran CRUD', 'Luong du lieu']
+
+### Tổng quan rows= 21 cols= 2 
+BẢNG XÁC ĐỊNH INPUT – OUTPUT
+CÁC CHỨC NĂNG HỆ THỐNG QUẢN LÝ NHÀ TRỌ | 
+Mục | Nội dung
+Phạm vi tài liệu | 6 tác nhân: Chủ trọ, Quản lý, Lễ tân, Nhân viên, Người thuê, Công an phường.
+Ánh xạ tác nhân → vai trò trong code | AD = ChuTro · MG = QuanLy · LT = LeTan · NV = NhanVien · TN = KhachThue · PM = CongAn
+Quy ước cột Input | Input liệt kê ĐÚNG các trường nhập liệu trên form: tên trường + kiểu nhập (ô nhập văn bản / ô nhập số / ô chọn ngày / ô chọn danh sách / ô chọn tệp / nút bấm). Chức năng không có trường nhập thì ghi rõ "Không nhập — …".
+Ký hiệu phân quyền | ● Toàn quyền · ◐ Theo phạm vi được gán · ○ Chỉ đọc · — Không có quyền
+Cơ chế phân quyền | RBAC: ma trận Action → AllowedRoles do Server cưỡng chế (BR-14/BR-15); client chỉ ẩn/hiện menu cho UX. Chủ trọ bypass cứng toàn bộ action quản trị.
+Sheet AD - ChuTro | Chức năng AD-01 → AD-07
+Sheet MG - QuanLy | Chức năng MG-01 → MG-11 (không gồm doanh thu)
+Sheet LT - LeTan | Chức năng LT-01 → LT-03 (duyệt lịch kiểm tra phòng)
+Sheet NV - NhanVien | Chức năng NV-01 → NV-02 (dọn phòng, thu tiền, kỹ thuật)
+Sheet TN - KhachThue | Chức năng TN-01 → TN-08
+Sheet PM - CongAn | Chức năng PM-01 → PM-04
+Sheet Phan quyen & IO | Ma trận phân quyền kèm Input/Output riêng cho 6 vai trò tác nhân
+Sheet Ma tran CRUD | Đối tượng × Tạo/Đọc/Cập nhật/Xóa (15 đối tượng)
+Sheet Luong du lieu | Luồng dữ liệu DF-01 → DF-26
+Bổ sung so với bản docx gốc | Thêm 2 tác nhân Lễ tân (LT) và Nhân viên (NV); thêm module phụ lục hợp đồng & người ở chung (AD-06, MG-11); thêm tìm kiếm người thuê (AD-07, MG-10); tách thống kê doanh thu (chỉ Chủ trọ) khỏi thống kê vận hành (Quản lý); viết lại toàn bộ cột Input thành các trường form nhập liệu thực tế đọc từ code (giữ nguyên 340 dòng và mã chức năng của docx gốc).
+Ghi chú kiểm chứng code | Bản Excel này là đặc tả đích. Trong code hiện tại, Quản lý vẫn còn quyền gọi báo cáo doanh thu (BAO_CAO_TONG_QUAN) và tab Thống kê chưa bị ẩn — cần sửa ở đợt triển khai tiếp theo.
+Ghi chú: Ma trận CRUD là bản tổng hợp phân tích từ danh mục chức năng và phân quyền trong tài liệu nguồn, không phải lược đồ bảng CSDL chính thức. Dấu ◐ biểu thị thao tác có điều kiện hoặc phải qua quy trình đề xuất/phê duyệt. Tên thực thể được chuẩn hóa ở mức nghiệp vụ; cần đối chiếu schema MySQL thực tế nếu dùng làm tài liệu thiết kế CSDL chi tiết. | 
+
+### AD - ChuTro rows= 86 cols= 4 
+Mã | Tên chức năng | Input (đầu vào) | Output (đầu ra)
+AD-01 | Đăng nhập & tài khoản cá nhân | Ô nhập tên tài khoản; ô nhập mật khẩu; ô nhập mật khẩu cũ/mới khi đổi. | Kết quả tổng hợp nhóm đăng nhập & tài khoản cá nhân; dữ liệu hoặc phản hồi từ các chức năng con.
+AD-01.1 | Đăng nhập | Tên tài khoản; mật khẩu. | Token phiên đăng nhập; vai trò AD; thông tin tài khoản/phạm vi được cấp hoặc thông báo lỗi.
+AD-01.1.1 | Nhập tên đăng nhập | Ô nhập tên tài khoản (bắt buộc). | Tên đăng nhập được ghi nhận trên biểu mẫu; thông báo nếu bỏ trống.
+AD-01.1.2 | Nhập mật khẩu | Ô nhập mật khẩu (bắt buộc, ẩn ký tự). | Giá trị trường mật khẩu được tiếp nhận; cảnh báo nếu không đạt yêu cầu.
+AD-01.2 | Đăng xuất | Nút Đăng xuất (không có trường nhập). | Phiên đăng nhập bị kết thúc; trở về màn hình đăng nhập.
+AD-01.3 | Đổi mật khẩu cá nhân | Mật khẩu cũ; mật khẩu mới; nhập lại mật khẩu mới. | Trạng thái đổi mật khẩu; thông báo thành công hoặc lý do không hợp lệ.
+AD-01.3.1 | Nhập mật khẩu cũ | Ô nhập mật khẩu cũ (bắt buộc, ẩn ký tự). | Giá trị trường mật khẩu được tiếp nhận; cảnh báo nếu không đạt yêu cầu.
+AD-01.3.2 | Nhập mật khẩu mới (≥ 6 ký tự) | Ô nhập mật khẩu mới (bắt buộc, ≥ 6 ký tự, ẩn ký tự). | Giá trị trường mật khẩu được tiếp nhận; cảnh báo nếu không đạt yêu cầu.
+AD-01.3.3 | Nhập lại mật khẩu mới | Ô nhập lại mật khẩu mới (bắt buộc, ẩn ký tự). | Giá trị trường mật khẩu được tiếp nhận; cảnh báo nếu không đạt yêu cầu.
+AD-02 | QUẢN LÝ TÀI KHOẢN | Bảng tài khoản; ô lọc vai trò; form tạo/sửa tài khoản. | Kết quả tổng hợp nhóm quản lý tài khoản; dữ liệu hoặc phản hồi từ các chức năng con.
+AD-02.1 | Xem danh sách tài khoản | Ô lọc theo vai trò. | Danh sách kết nối theo phạm vi và trạng thái tương ứng.
+AD-02.1.1 | Hiển thị: tên đăng nhập, vai trò, trạng thái, khu trọ được gán | Không nhập — hiển thị tên đăng nhập, vai trò, trạng thái, khu trọ được gán. | Thông tin hiển thị: tên đăng nhập, vai trò, trạng thái, khu trọ được gán.
+AD-02.1.2 | Lọc theo vai trò | Ô lọc theo vai trò. | Danh sách kết nối đáp ứng bộ lọc.
+AD-02.2 | Tạo tài khoản nhân viên | Tên đăng nhập; mật khẩu; vai trò (chọn); khu trọ (chọn); lý do khóa. | Kết nối mới được tạo với mã định danh; thông báo thành công/lỗi.
+AD-02.2.1 | Nhập tên đăng nhập (duy nhất) | Ô nhập tên tài khoản (bắt buộc, không trùng). | Tên đăng nhập được ghi nhận trên biểu mẫu; thông báo nếu bỏ trống.
+AD-02.2.2 | Nhập mật khẩu ban đầu | Ô nhập mật khẩu ban đầu (bắt buộc). | Giá trị trường mật khẩu được tiếp nhận; cảnh báo nếu không đạt yêu cầu.
+AD-02.2.3 | Chọn vai trò (MANAGER / POLICE / TENANT) | Ô chọn vai trò: Quản lý / Công an / Khách thuê. | Mục đã chọn được gắn vào biểu mẫu/yêu cầu; cảnh báo nếu không đủ điều kiện.
+AD-02.2.4 | Gán khu trọ cho MANAGER | Ô chọn khu trọ (chỉ hiện khi vai trò = Quản lý). | Kết quả gán khu trọ cho manager; thông báo trạng thái thành công/thất bại.
+AD-02.3 | Sửa tài khoản | Ô nhập giá trị mới cho tài khoản. | Thông tin kết nối được cập nhật; trạng thái thành công/thất bại.
+AD-02.3.1 | Sửa vai trò | Ô chọn giá trị mới cho vai trò. | Thông tin kết nối được cập nhật; trạng thái thành công/thất bại.
+AD-02.3.2 | Sửa trạng thái | Ô chọn giá trị mới cho trạng thái. | Thông tin kết nối được cập nhật; trạng thái thành công/thất bại.
+AD-02.3.3 | Sửa khu trọ được gán | Ô chọn khu trọ mới. | Thông tin kết nối được cập nhật; trạng thái thành công/thất bại.
+AD-02.4 | Khóa / mở khóa tài khoản | Chọn tài khoản; ô nhập lý do khóa (bắt buộc khi khóa). | Trạng thái kết nối sau thao tác; thông báo thành công hoặc lý do bị từ chối.
+AD-02.5 | Đặt lại mật khẩu | Chọn tài khoản; hộp xác nhận thao tác. | Kết quả đặt lại mật khẩu; thông báo trạng thái thành công/thất bại.
+AD-02.6 | Xóa tài khoản (không phải chính mình) | Chọn tài khoản; hộp xác nhận xóa. | Trạng thái kết nối sau thao tác; thông báo thành công hoặc lý do bị từ chối.
+AD-03 | QUẢN LÝ KHU TRỌ | Bảng khu trọ; form thêm/sửa; form phân công người quản lý. | Kết quả tổng hợp nhóm quản lý khu trọ dữ liệu hoặc phản hồi từ các chức năng con.
+AD-03.1 | Xem danh sách khu trọ | Ô lọc theo trạng thái. | Danh sách kết nối theo phạm vi và trạng thái tương ứng.
+AD-03.1.1 | Hiển thị: tên khu trọ, địa chỉ, số phòng, người quản lý | Không nhập — hiển thị tên khu trọ, địa chỉ, số phòng, người quản lý. | Thông tin hiển thị: tên khu trọ, địa chỉ, số phòng, người quản lý.
+AD-03.1.2 | Lọc theo trạng thái | Ô lọc theo trạng thái. | Danh sách kết nối đáp ứng bộ lọc.
+AD-03.2 | Thêm khu trọ mới | Tên khu trọ; địa chỉ; khu trọ (chọn); người quản lý (chọn). | Kết nối mới được tạo với mã định danh; thông báo thành công/lỗi.
+AD-03.2.1 | Nhập tên khu trọ, địa chỉ | Ô nhập tên khu trọ; ô nhập địa chỉ (bắt buộc). | Giá trị tên khu trọ, địa chỉ được tiếp nhận và kiểm tra hợp lệ; thông báo lỗi nếu có.
+AD-03.2.2 | Lưu khu trọ | Nút Lưu. | Bản ghi/file kết nối được lưu; thông báo kết quả hoặc đường dẫn.
+AD-03.3 | Sửa thông tin khu trọ | Ô nhập giá trị mới cho thông tin khu trọ. | Thông tin kết nối được cập nhật; trạng thái thành công/thất bại.
+AD-03.3.1 | Sửa tên khu trọ | Ô nhập tên khu trọ mới. | Thông tin kết nối được cập nhật; trạng thái thành công/thất bại.
+AD-03.3.2 | Sửa địa chỉ | Ô nhập địa chỉ mới. | Thông tin kết nối được cập nhật; trạng thái thành công/thất bại.
+AD-03.4 | Phân công Người quản lý vào khu trọ | Ô chọn khu trọ; ô chọn người quản lý. | Kết quả phân công người quản lý vào khu trọ; thông báo trạng thái thành công/thất bại.
+AD-03.4.1 | Chọn khu trọ | Ô chọn khu trọ. | Mục đã chọn được gắn vào biểu mẫu/yêu cầu; cảnh báo nếu không đủ điều kiện.
+AD-03.4.2 | Chọn Người quản lý | Ô chọn người quản lý. | Mục đã chọn được gắn vào biểu mẫu/yêu cầu; cảnh báo nếu không đủ điều kiện.
+AD-03.4.3 | Lưu phân công | Nút Lưu phân công. | Bản ghi/file kết nối được lưu; thông báo kết quả hoặc đường dẫn.
+AD-03.5 | Xem tổng hợp nhiều khu trọ | Ô chọn kỳ thống kê. | Thông tin kết nối tương ứng và trạng thái cần theo dõi.
+AD-03.5.1 | Tổng số phòng, tổng người thuê | Không nhập — hệ thống tổng hợp số phòng, tổng người thuê. | Giá trị thống kê của tổng số phòng, tổng người thuê; bảng hoặc biểu đồ tương ứng.
+AD-03.5.2 | Tổng doanh thu theo khu trọ | Không nhập — hệ thống tổng hợp doanh thu theo khu trọ. | Giá trị thống kê của tổng doanh thu theo khu trọ; bảng hoặc biểu đồ tương ứng.
+AD-03.6 | Xóa khu trọ (khi không còn phòng) | Ô chọn khu trọ trống; hộp xác nhận xóa. | Trạng thái kết nối sau thao tác; thông báo thành công hoặc lý do bị từ chối.
+AD-03.6.1 | Chọn khu trọ trống | Ô chọn khu trọ (chỉ khu không còn phòng). | Mục đã chọn được gắn vào biểu mẫu/yêu cầu; cảnh báo nếu không đủ điều kiện.
+AD-03.6.2 | Xác nhận xóa | Nút Xác nhận xóa trong hộp thoại. | Kết quả xác nhận; trạng thái kết nối được cập nhật nếu hợp lệ.
+AD-03.6.3 | Hiển thị kết quả | Không nhập — hiển thị kết quả. | Giao diện hiển thị kết quả; trạng thái lỗi/rỗng nếu có.
+AD-04 | DUYỆT ĐỀ XUẤT TỪ NHÂN VIÊN (TẦNG 1 — ĐỘC QUYỀN) | Bảng đề xuất; ô lọc loại/trạng thái; nút duyệt/từ chối. | Kết quả tổng hợp nhóm duyệt đề xuất từ nhân viên (tầng 1 — độc quyền); dữ liệu hoặc phản hồi từ các chức năng con.
+AD-04.1 | Xem danh sách đề xuất chờ duyệt | Ô lọc theo loại; ô lọc theo trạng thái. | Danh sách kết nối theo phạm vi và trạng thái tương ứng.
+AD-04.1.1 | Hiển thị: loại đề xuất, người gửi, thời gian, trạng thái | Không nhập — hiển thị loại đề xuất, người gửi, thời gian, trạng thái. | Thông tin hiển thị: loại đề xuất, người gửi, thời gian, trạng thái.
+AD-04.1.2 | Lọc theo loại / trạng thái | Ô lọc theo loại / trạng thái. | Danh sách kết nối đáp ứng bộ lọc.
+AD-04.2 | Xem chi tiết đề xuất | Chọn dòng đề xuất. | Hồ sơ/chi tiết kết nối tương ứng; thông báo nếu không tồn tại.
+AD-04.2.1 | Loại đề xuất (chấm dứt HĐ / xóa phòng / sửa giá / xóa HĐ) | Chọn đề xuất; nút Duyệt hoặc ô nhập lý do từ chối. | Thông tin kết nối được cập nhật; trạng thái thành công/thất bại.
+AD-04.2.2 | Lý do, bằng chứng kèm theo | Chọn đề xuất; nút Duyệt hoặc ô nhập lý do từ chối. | Kết quả lý do, bằng chứng kèm theo; thông báo trạng thái thành công/thất bại.
+AD-04.2.3 | Người đề xuất, thời gian | Chọn đề xuất; nút Duyệt hoặc ô nhập lý do từ chối. | Kết quả người đề xuất, thời gian; thông báo trạng thái thành công/thất bại.
+AD-04.3 | Phê duyệt đề xuất | Chọn đề xuất; nút Duyệt hoặc ô nhập lý do từ chối. | Trạng thái đề xuất mới; kết quả nghiệp vụ (nếu duyệt); thông báo đến người quản lý.
+AD-04.3.1 | Chọn "Duyệt" | Ô chọn "Duyệt". | Mục đã chọn được gắn vào biểu mẫu/yêu cầu; cảnh báo nếu không đủ điều kiện.
+AD-04.3.2 | Thực thi nghiệp vụ tương ứng | Không nhập — hệ thống tự thực thi sau khi duyệt. | Kết quả thực thi nghiệp vụ tương ứng; thông báo trạng thái thành công/thất bại.
+AD-04.3.3 | Thông báo cho Người quản lý | Không nhập — hệ thống tự gửi thông báo. | Thông báo trên giao diện và/hoặc gửi tới người nhận.
+AD-04.4 | Từ chối đề xuất | Chọn đề xuất; nút Duyệt hoặc ô nhập lý do từ chối. | Trạng thái đề xuất mới; kết quả nghiệp vụ (nếu duyệt); thông báo đến người quản lý.
+AD-04.4.1 | Nhập lý do từ chối | Ô nhập lý do từ chối (bắt buộc). | Giá trị lý do từ chối được tiếp nhận và kiểm tra hợp lệ; thông báo lỗi nếu có.
+AD-04.4.2 | Thông báo cho Người quản lý | Không nhập — hệ thống tự gửi thông báo. | Thông báo trên giao diện và/hoặc gửi tới người nhận.
+AD-05 | THỐNG KÊ CHIẾN LƯỢC | Ô chọn tháng; ô chọn khoảng thời gian; ô chọn kỳ dự báo. | Kết quả tổng hợp nhóm thống kê chiến lược (tầng 1 — độc quyền); dữ liệu hoặc phản hồi từ các chức năng con.
+AD-05.1 | Báo cáo doanh thu tổng hợp | Ô chọn kỳ; bộ lọc. | Giá trị thống kê của báo cáo doanh thu tổng hợp; bảng hoặc biểu đồ tương ứng.
+AD-05.1.1 | Tổng doanh thu toàn hệ thống | Không nhập — hệ thống tổng hợp doanh thu toàn hệ thống. | Giá trị thống kê của tổng doanh thu toàn hệ thống; bảng hoặc biểu đồ tương ứng.
+AD-05.1.2 | Doanh thu theo từng khu trọ | Ô chọn kỳ thống kê; ô chọn khoảng thời gian. | Giá trị thống kê của doanh thu theo từng khu trọ; bảng hoặc biểu đồ tương ứng.
+AD-05.2 | Xu hướng theo tháng / quý / năm | Ô chọn kỳ thống kê; ô chọn khoảng thời gian. | Kết quả xu hướng theo tháng / quý / năm; thông báo trạng thái thành công/thất bại.
+AD-05.2.1 | Chọn khoảng thời gian | Ô chọn ngày bắt đầu; ô chọn ngày kết thúc. | Khoảng thời gian được xác nhận; cảnh báo nếu khoảng không hợp lệ.
+AD-05.2.2 | Hiển thị biểu đồ xu hướng | Không nhập — hiển thị biểu đồ xu hướng. | Giao diện hiển thị biểu đồ xu hướng; trạng thái lỗi/rỗng nếu có.
+AD-05.3 | Hiệu suất từng khu trọ | Ô chọn kỳ thống kê; ô chọn khoảng thời gian. | Kết quả hiệu suất từng khu trọ; thông báo trạng thái thành công/thất bại.
+AD-05.3.1 | Tỷ lệ lấp đầy từng khu trọ | Ô chọn kỳ thống kê; ô chọn khoảng thời gian. | Giá trị thống kê của tỷ lệ lấp đầy từng khu trọ; bảng hoặc biểu đồ tương ứng.
+AD-05.3.2 | So sánh doanh thu giữa các khu trọ | Ô chọn kỳ thống kê; ô chọn khoảng thời gian. | Giá trị thống kê của so sánh doanh thu giữa các khu trọ; bảng hoặc biểu đồ tương ứng.
+AD-05.4 | Hiệu suất từng Người quản lý | Ô chọn kỳ thống kê; ô chọn khoảng thời gian. | Kết quả hiệu suất từng người quản lý; thông báo trạng thái thành công/thất bại.
+AD-05.4.1 | Số giao dịch đã thực hiện | Ô chọn kỳ thống kê; ô chọn khoảng thời gian. | Giá trị thống kê của số giao dịch đã thực hiện; bảng hoặc biểu đồ tương ứng.
+AD-05.4.2 | Số đề xuất đã gửi | Ô chọn kỳ thống kê; ô chọn khoảng thời gian. | File báo cáo theo định dạng yêu cầu; tên/đường dẫn file hoặc thông báo lỗi.
+AD-05.5 | Dự báo doanh thu | Ô chọn kỳ thống kê; ô chọn khoảng thời gian. | Giá trị thống kê của dự báo doanh thu; bảng hoặc biểu đồ tương ứng.
+AD-05.5.1 | Chọn kỳ dự báo | Ô chọn kỳ dự báo. | Mục đã chọn được gắn vào biểu mẫu/yêu cầu; cảnh báo nếu không đủ điều kiện.
+AD-05.5.2 | Hiển thị dự báo | Không nhập — hiển thị dự báo. | Giao diện hiển thị dự báo; trạng thái lỗi/rỗng nếu có.
+AD-06 | PHỤ LỤC HỢP ĐỒNG & NGƯỜI Ở CHUNG | Ô chọn hợp đồng; bảng người ở chung; form thêm/sửa người ở chung. | Danh sách người ở chung; bản in phụ lục.
+AD-06.1 | Xem phụ lục hợp đồng | Chọn dòng hợp đồng; nút Người ở chung. | Thông tin 2 bên (chủ trọ lấy từ Cài đặt, người đại diện) và bảng người ở chung.
+AD-06.2 | Nhập người ở chung | Ô nhập họ tên; ô nhập CCCD (12 số); ô chọn ngày sinh; ô nhập quê quán; ô nhập nơi học/làm; ô nhập SĐT. | Dòng người ở chung được thêm vào bảng; báo lỗi nếu CCCD sai hoặc trùng.
+AD-06.2.1 | Nhập đủ người ở chung (3 người → 3 dòng) | Mỗi người một dòng: họ tên; CCCD; ngày sinh; quê quán; nơi học/làm; SĐT. | Hợp đồng 3 người = 1 người đại diện + 2 dòng phụ lục; bảng hiển thị đủ số người.
+AD-06.3 | Lưu phụ lục | Nút Lưu phụ lục (gửi toàn bộ danh sách đang hiển thị). | Danh sách được thay toàn bộ trong 1 giao dịch; thông báo đã lưu.
+AD-06.4 | In phụ lục | Nút In phụ lục. | Bản in: bên A (chủ trọ), bên B (người đại diện), danh sách người ở chung, chữ ký 2 bên.
+AD-07 | TÌM KIẾM NGƯỜI THUÊ | Ô nhập từ khóa tìm kiếm. | Bảng người thuê khớp tiêu chí.
+AD-07.1 | Tìm theo họ tên / CCCD / SĐT | Ô nhập từ khóa (gõ tới đâu lọc tới đó); để trống = tải lại đầy đủ. | Danh sách khớp tiêu chí, tối đa 50 dòng; thông báo nếu không tìm thấy.
+
+### MG - QuanLy rows= 127 cols= 4 
+Mã | Tên chức năng | Input (đầu vào) | Output (đầu ra)
+MG-01 | Đăng nhập & tài khoản cá nhân | Ô nhập tên tài khoản; ô nhập mật khẩu. | Kết quả tổng hợp nhóm đăng nhập & tài khoản cá nhân; dữ liệu hoặc phản hồi từ các chức năng con.
+MG-01.1 | Đăng nhập | Tên tài khoản; mật khẩu. | Token phiên đăng nhập; vai trò MG; thông tin tài khoản/phạm vi được cấp hoặc thông báo lỗi.
+MG-01.1.1 | Nhập tên đăng nhập | Ô nhập tên tài khoản (bắt buộc). | Tên đăng nhập được ghi nhận trên biểu mẫu; thông báo nếu bỏ trống.
+MG-01.1.2 | Nhập mật khẩu | Ô nhập mật khẩu (bắt buộc, ẩn ký tự). | Giá trị trường mật khẩu được tiếp nhận; cảnh báo nếu không đạt yêu cầu.
+MG-01.1.3 | Nhận Token + Role = MANAGER + khu trọ được gán | Không nhập — hệ thống trả về sau khi xác thực. | Token truy cập; vai trò; khu trọ được phân quyền nếu áp dụng.
+MG-01.2 | Đăng xuất | Nút Đăng xuất (không có trường nhập). | Phiên đăng nhập bị kết thúc; trở về màn hình đăng nhập.
+MG-01.3 | Đổi mật khẩu cá nhân | Mật khẩu cũ; mật khẩu mới; nhập lại mật khẩu mới. | Trạng thái đổi mật khẩu; thông báo thành công hoặc lý do không hợp lệ.
+MG-01.3.1 | Nhập mật khẩu cũ | Ô nhập mật khẩu cũ (bắt buộc, ẩn ký tự). | Giá trị trường mật khẩu được tiếp nhận; cảnh báo nếu không đạt yêu cầu.
+MG-01.3.2 | Nhập mật khẩu mới (≥ 6 ký tự) | Ô nhập mật khẩu mới (bắt buộc, ≥ 6 ký tự, ẩn ký tự). | Giá trị trường mật khẩu được tiếp nhận; cảnh báo nếu không đạt yêu cầu.
+MG-01.3.3 | Nhập lại mật khẩu mới | Ô nhập lại mật khẩu mới (bắt buộc, ẩn ký tự). | Giá trị trường mật khẩu được tiếp nhận; cảnh báo nếu không đạt yêu cầu.
+MG-02 | Quản lý phòng (trong khu trọ được giao) | Bảng phòng; form thêm/sửa phòng. | Kết quả tổng hợp nhóm quản lý phòng (trong khu trọ được giao); dữ liệu hoặc phản hồi từ các chức năng con.
+MG-02.1 | Xem danh sách phòng | Ô lọc theo trạng thái. | Danh sách kết nối theo phạm vi và trạng thái tương ứng.
+MG-02.1.1 | Hiển thị bảng đầy đủ | Không nhập — hiển thị bảng đầy đủ. | Giao diện hiển thị bảng đầy đủ; trạng thái lỗi/rỗng nếu có.
+MG-02.1.2 | Lọc theo trạng thái | Ô lọc theo trạng thái. | Danh sách kết nối đáp ứng bộ lọc.
+MG-02.2 | Thêm phòng mới | Số phòng; giá thuê; sức chứa; trạng thái (chọn); mô tả. | Kết nối mới được tạo với mã định danh; thông báo thành công/lỗi.
+MG-02.2.1 | Nhập số phòng, giá thuê, sức chứa | Ô nhập số phòng; ô nhập giá thuê; ô nhập sức chứa. | Giá trị số phòng, giá thuê, sức chứa được tiếp nhận và kiểm tra hợp lệ; thông báo lỗi nếu có.
+MG-02.2.2 | Hiển thị kết quả | Không nhập — hiển thị kết quả. | Giao diện hiển thị kết quả; trạng thái lỗi/rỗng nếu có.
+MG-02.3 | Sửa thông tin phòng | Ô nhập giá trị mới cho thông tin phòng. | Thông tin kết nối được cập nhật; trạng thái thành công/thất bại.
+MG-02.3.1 | Sửa giá thuê | Ô nhập giá trị mới cho giá thuê. | Thông tin kết nối được cập nhật; trạng thái thành công/thất bại.
+MG-02.3.2 | Sửa sức chứa | Ô nhập giá trị mới cho sức chứa. | Thông tin kết nối được cập nhật; trạng thái thành công/thất bại.
+MG-02.3.3 | Sửa trạng thái | Ô chọn giá trị mới cho trạng thái. | Thông tin kết nối được cập nhật; trạng thái thành công/thất bại.
+MG-02.4 | Xem chi tiết phòng | Chọn dòng phòng. | Hồ sơ/chi tiết kết nối tương ứng; thông báo nếu không tồn tại.
+MG-03 | Quản lý người thuê (trong khu trọ được giao) | Bảng người thuê; ô tìm kiếm; form thêm/sửa. | Kết quả tổng hợp nhóm quản lý người thuê (trong khu trọ được giao); dữ liệu hoặc phản hồi từ các chức năng con.
+MG-03.1 | Xem danh sách người thuê | Ô nhập từ khóa; bộ lọc. | Danh sách kết nối theo phạm vi và trạng thái tương ứng.
+MG-03.2 | Thêm người thuê mới | Họ tên; ngày sinh; CCCD; SĐT; quê quán; nơi học/làm; phòng (chọn); tạm trú (chọn). | Kết nối mới được tạo với mã định danh; thông báo thành công/lỗi.
+MG-03.2.1 | Nhập hồ sơ cá nhân | Ô nhập họ tên; ô chọn ngày sinh; ô nhập CCCD; ô nhập SĐT; ô nhập quê quán; ô nhập nơi học/làm. | Giá trị hồ sơ cá nhân được tiếp nhận và kiểm tra hợp lệ; thông báo lỗi nếu có.
+MG-03.2.2 | Chọn phòng (chỉ phòng còn chỗ) | Ô chọn phòng (danh sách chỉ gồm phòng còn chỗ). | Mục đã chọn được gắn vào biểu mẫu/yêu cầu; cảnh báo nếu không đủ điều kiện.
+MG-03.2.3 | Hiển thị kết quả | Không nhập — hiển thị kết quả. | Giao diện hiển thị kết quả; trạng thái lỗi/rỗng nếu có.
+MG-03.3 | Sửa hồ sơ người thuê | Ô nhập giá trị mới cho hồ sơ người thuê. | Thông tin kết nối được cập nhật; trạng thái thành công/thất bại.
+MG-03.4 | Chuyển phòng | Ô chọn phòng mới. | Kết quả chuyển phòng; thông báo trạng thái thành công/thất bại.
+MG-03.5 | Ghi nhận trả phòng | Chọn người thuê; hộp xác nhận trả phòng. | Bản ghi/file kết nối được lưu; thông báo kết quả hoặc đường dẫn.
+MG-04 | Quản lý hợp đồng (trong khu trọ được giao) | Bảng hợp đồng; form lập/gia hạn/chấm dứt. | Kết quả tổng hợp nhóm quản lý hợp đồng (trong khu trọ được giao); dữ liệu hoặc phản hồi từ các chức năng con.
+MG-04.1 | Xem danh sách hợp đồng | Ô lọc theo trạng thái; ô chọn tháng. | Danh sách kết nối theo phạm vi và trạng thái tương ứng.
+MG-04.2 | Lập hợp đồng mới | Phòng (chọn); người đại diện (chọn); ngày bắt đầu; ngày kết thúc; giá thuê; tiền cọc; chờ QR (chọn); ghi chú. | Kết nối mới được tạo với mã định danh; thông báo thành công/lỗi.
+MG-04.2.1 | Chọn phòng đang trống | Ô chọn phòng (chỉ phòng trống). | Mục đã chọn được gắn vào biểu mẫu/yêu cầu; cảnh báo nếu không đủ điều kiện.
+MG-04.2.2 | Chọn người đại diện (thuộc phòng đó) | Ô chọn người thuê (thuộc phòng đã chọn). | Mục đã chọn được gắn vào biểu mẫu/yêu cầu; cảnh báo nếu không đủ điều kiện.
+MG-04.2.3 | Nhập ngày BĐ, ngày KT, giá thuê, tiền cọc | Ô chọn ngày bắt đầu; ô chọn ngày kết thúc; ô nhập giá thuê; ô nhập tiền cọc. | Giá trị ngày bđ, ngày kt, giá thuê, tiền cọc được tiếp nhận và kiểm tra hợp lệ; thông báo lỗi nếu có.
+MG-04.2.4 | Hiển thị kết quả | Không nhập — hiển thị kết quả. | Giao diện hiển thị kết quả; trạng thái lỗi/rỗng nếu có.
+MG-04.3 | Gia hạn hợp đồng | Ô chọn ngày kết thúc mới. | Kết quả gia hạn hợp đồng; thông báo trạng thái thành công/thất bại.
+MG-04.4 | Đề xuất chấm dứt hợp đồng | Chọn hợp đồng; ô chọn ngày bàn giao; ô nhập lý do. | File báo cáo theo định dạng yêu cầu; tên/đường dẫn file hoặc thông báo lỗi.
+MG-04.4.1 | Chọn hợp đồng còn hiệu lực | Ô chọn hợp đồng (chỉ hợp đồng còn hiệu lực). | Mục đã chọn được gắn vào biểu mẫu/yêu cầu; cảnh báo nếu không đủ điều kiện.
+MG-04.4.2 | Nhập lý do đề xuất | Ô nhập lý do đề xuất (bắt buộc). | Giá trị lý do đề xuất được tiếp nhận và kiểm tra hợp lệ; thông báo lỗi nếu có.
+MG-04.4.3 | Gửi đề xuất lên Chủ trọ | Nút Gửi đề xuất. | Yêu cầu kết nối gửi thành công hoặc lỗi; mã tham chiếu/trạng thái tiếp nhận.
+MG-04.4.4 | Chờ Chủ trọ duyệt | Không nhập — trạng thái do hệ thống hiển thị. | Trạng thái đề xuất mới; kết quả nghiệp vụ (nếu duyệt); thông báo đến người quản lý.
+MG-04.5 | Theo dõi hợp đồng sắp hết hạn (30 ngày) | Ô chọn tháng. | Thông tin kết nối tương ứng và trạng thái cần theo dõi.
+MG-05 | Quản lý điện nước | Ô chọn phòng; ô chọn tháng; các ô nhập chỉ số và đơn giá. | Kết quả tổng hợp nhóm quản lý điện nước; dữ liệu hoặc phản hồi từ các chức năng con.
+MG-05.1 | Nhập chỉ số điện nước hàng tháng | Ô chọn phòng; ô chọn tháng; ô nhập chỉ số điện cũ/mới; ô nhập đơn giá điện; ô chọn hình thức nước; ô nhập chỉ số nước cũ/mới; ô nhập số người; ô nhập đơn giá nước. | Giá trị chỉ số điện nước hàng tháng được tiếp nhận và kiểm tra hợp lệ; thông báo lỗi nếu có.
+MG-05.1.1 | Chọn phòng + tháng chốt | Ô chọn phòng; ô chọn tháng. | Mục đã chọn được gắn vào biểu mẫu/yêu cầu; cảnh báo nếu không đủ điều kiện.
+MG-05.1.2 | Tự điền chỉ số cũ từ kỳ trước | Không nhập — hệ thống tự điền, ô bị khóa nếu kỳ trước đã chốt. | Giá trị thống kê của tự điền chỉ số cũ từ kỳ trước; bảng hoặc biểu đồ tương ứng.
+MG-05.1.3 | Nhập chỉ số mới + đơn giá | Ô nhập chỉ số mới; ô nhập đơn giá (điện và nước). | Giá trị chỉ số mới + đơn giá được tiếp nhận và kiểm tra hợp lệ; thông báo lỗi nếu có.
+MG-05.1.4 | Hiển thị số tiêu thụ + thành tiền | Không nhập — hệ thống tính và hiển thị. | Giao diện hiển thị số tiêu thụ + thành tiền; trạng thái lỗi/rỗng nếu có.
+MG-05.1.5 | Hiển thị kết quả | Không nhập — hiển thị kết quả. | Giao diện hiển thị kết quả; trạng thái lỗi/rỗng nếu có.
+MG-05.2 | Xem lịch sử chỉ số | Ô chọn phòng; khoảng thời gian. | Lịch sử kết nối và thời điểm/chi tiết thay đổi.
+MG-05.3 | Sửa chỉ số đã nhập (chưa lập hóa đơn) | Ô nhập chỉ số mới; ô nhập đơn giá. | Giá trị (chưa lập hóa đơn) được tiếp nhận và kiểm tra hợp lệ; thông báo lỗi nếu có.
+MG-06 | Hóa đơn và thanh toán | Ô chọn phòng; ô chọn tháng; ô nhập phí khác; nút xác nhận thu tiền. | Kết quả tổng hợp nhóm hóa đơn và thanh toán; dữ liệu hoặc phản hồi từ các chức năng con.
+MG-06.1 | Lập hóa đơn tháng | Phòng (chọn); tháng (yyyy-MM); phí khác. | Kết nối mới được tạo với mã định danh; thông báo thành công/lỗi.
+MG-06.1.1 | Chọn phòng + tháng | Ô chọn phòng; ô nhập tháng (yyyy-MM). | Mục đã chọn được gắn vào biểu mẫu/yêu cầu; cảnh báo nếu không đủ điều kiện.
+MG-06.1.2 | Hiển thị chi tiết các khoản | Không nhập — hiển thị chi tiết các khoản. | Giao diện hiển thị chi tiết các khoản; trạng thái lỗi/rỗng nếu có.
+MG-06.1.3 | Xác nhận lưu | Nút Xác nhận lưu. | Kết quả xác nhận; trạng thái kết nối được cập nhật nếu hợp lệ.
+MG-06.2 | Xem danh sách hóa đơn | Ô chọn tháng. | Danh sách kết nối theo phạm vi và trạng thái tương ứng.
+MG-06.3 | Xem chi tiết hóa đơn | Chọn dòng hóa đơn. | Hồ sơ/chi tiết kết nối tương ứng; thông báo nếu không tồn tại.
+MG-06.4 | Xác nhận thanh toán | Chọn hóa đơn; hộp xác nhận thu tiền. | Kết quả xác nhận; trạng thái kết nối được cập nhật nếu hợp lệ.
+MG-06.5 | Xem danh sách phòng còn nợ | Ô chọn tháng. | Danh sách kết nối theo phạm vi và trạng thái tương ứng.
+MG-06.6 | Đề xuất xóa hóa đơn (chưa thanh toán) | Chọn hóa đơn; ô nhập lý do đề xuất. | Trạng thái kết nối sau thao tác; thông báo thành công hoặc lý do bị từ chối.
+MG-06.6.1 | Chọn hóa đơn chưa thanh toán | Ô chọn hóa đơn (chỉ hóa đơn chưa thanh toán). | Mục đã chọn được gắn vào biểu mẫu/yêu cầu; cảnh báo nếu không đủ điều kiện.
+MG-06.6.2 | Nhập lý do đề xuất | Ô nhập lý do đề xuất (bắt buộc). | Giá trị lý do đề xuất được tiếp nhận và kiểm tra hợp lệ; thông báo lỗi nếu có.
+MG-06.6.3 | Gửi đề xuất lên Chủ trọ | Nút Gửi đề xuất. | Yêu cầu kết nối gửi thành công hoặc lỗi; mã tham chiếu/trạng thái tiếp nhận.
+MG-06.6.4 | Chờ Chủ trọ duyệt | Không nhập — trạng thái do hệ thống hiển thị. | Trạng thái đề xuất mới; kết quả nghiệp vụ (nếu duyệt); thông báo đến người quản lý.
+MG-07 | Thống kê vận hành (trong khu trọ được giao) | Ô chọn tháng; ô nhập từ khóa tra cứu nhanh. | Kết quả tổng hợp nhóm thống kê vận hành (trong khu trọ được giao); dữ liệu hoặc phản hồi từ các chức năng con.
+MG-07.1 | Xem tổng quan khu trọ | Ô chọn tháng. | Thông tin kết nối tương ứng và trạng thái cần theo dõi.
+MG-07.2 | Thống kê doanh thu theo tháng | Ô chọn kỳ thống kê. | Giá trị thống kê của thống kê doanh thu theo tháng; bảng hoặc biểu đồ tương ứng.
+MG-07.3 | Tra cứu nhanh | Ô chọn tháng; ô nhập từ khóa. | Kết quả kết nối khớp tiêu chí hoặc thông báo không tìm thấy.
+MG-07.4 | Xuất báo cáo | Nút Xuất; ô chọn định dạng tệp. | File báo cáo theo định dạng yêu cầu; tên/đường dẫn file hoặc thông báo lỗi.
+MG-08 | Báo cáo lưu trú (dùng chung với Công an) | Bộ lọc phòng; ô chọn cờ tạm trú; nút xuất file. | Kết quả tổng hợp nhóm báo cáo lưu trú (dùng chung với công an); dữ liệu hoặc phản hồi từ các chức năng con.
+MG-08.1 | Xem danh sách tạm trú hiện tại | Bộ lọc phòng. | Danh sách kết nối theo phạm vi và trạng thái tương ứng.
+MG-08.2 | Xuất danh sách tạm trú | Nút Xuất; ô chọn định dạng tệp. | File báo cáo theo định dạng yêu cầu; tên/đường dẫn file hoặc thông báo lỗi.
+MG-08.3 | Cập nhật cờ "đã đăng ký tạm trú" | Ô chọn Có / Không cho từng người. | Thông tin kết nối được cập nhật; trạng thái thành công/thất bại.
+MG-09 | QUẢN LÝ SỰ CỐ | Bảng sự cố; ô lọc mức độ/trạng thái; form cập nhật tiến độ. | Kết quả tổng hợp nhóm quản lý sự cố; dữ liệu hoặc phản hồi từ các chức năng con.
+MG-09.1 | Xem danh sách sự cố | Ô lọc theo mức độ; ô lọc theo trạng thái. | Danh sách kết nối theo phạm vi và trạng thái tương ứng.
+MG-09.1.1 | Hiển thị: mã, phòng, loại, mức độ, trạng thái | Không nhập — hiển thị mã, phòng, loại, mức độ, trạng thái. | Thông tin hiển thị: mã, phòng, loại, mức độ, trạng thái.
+MG-09.1.2 | Lọc theo mức độ / trạng thái | Ô lọc theo mức độ / trạng thái. | Danh sách kết nối đáp ứng bộ lọc.
+MG-09.1.3 | Sắp xếp theo mức độ khẩn cấp | Chọn sự cố; ô nhập nội dung xử lý/tiến độ; ô nhập lý do/chi phí/phương án. | Danh sách kết nối theo thứ tự yêu cầu.
+MG-09.2 | Xem chi tiết sự cố | Chọn dòng sự cố. | Hồ sơ/chi tiết kết nối tương ứng; thông báo nếu không tồn tại.
+MG-09.3 | Tiếp nhận sự cố | Chọn sự cố; nút Xác nhận tiếp nhận. | Kết quả tiếp nhận sự cố; thông báo trạng thái thành công/thất bại.
+MG-09.3.1 | Xác nhận tiếp nhận | Nút Xác nhận tiếp nhận. | Kết quả xác nhận; trạng thái kết nối được cập nhật nếu hợp lệ.
+MG-09.3.2 | Cập nhật trạng thái → "Đã tiếp nhận" | Ô nhập giá trị mới cho trạng thái → "Đã tiếp nhận". | Thông tin kết nối được cập nhật; trạng thái thành công/thất bại.
+MG-09.4 | Xử lý sự cố theo mức độ | Chọn sự cố; ô nhập nội dung xử lý/tiến độ; ô nhập lý do/chi phí/phương án. | Trạng thái sự cố sau xử lý; nhật ký xử lý; thông báo liên quan.
+MG-09.4.1 | Sự cố mức THẤP | Chọn sự cố; ô nhập nội dung xử lý/tiến độ; ô nhập lý do/chi phí/phương án. | Kết quả sự cố mức thấp; thông báo trạng thái thành công/thất bại.
+MG-09.4.1.1 | Tự xử lý (không cần duyệt) | Ô nhập nội dung xử lý. | Trạng thái đề xuất mới; kết quả nghiệp vụ (nếu duyệt); thông báo đến người quản lý.
+MG-09.4.1.2 | Cập nhật tiến độ | Ô nhập giá trị mới cho tiến độ. | Thông tin kết nối được cập nhật; trạng thái thành công/thất bại.
+MG-09.4.1.3 | Hoàn tất | Chọn sự cố; ô nhập nội dung xử lý/tiến độ; ô nhập lý do/chi phí/phương án. | Trạng thái sự cố sau xử lý; nhật ký xử lý; thông báo liên quan.
+MG-09.4.2 | Sự cố mức TRUNG BÌNH | Chọn sự cố; ô nhập nội dung xử lý/tiến độ; ô nhập lý do/chi phí/phương án. | Kết quả sự cố mức trung bình; thông báo trạng thái thành công/thất bại.
+MG-09.4.2.1 | Tự xử lý (không cần duyệt) | Ô nhập nội dung xử lý. | Trạng thái đề xuất mới; kết quả nghiệp vụ (nếu duyệt); thông báo đến người quản lý.
+MG-09.4.2.2 | Cập nhật tiến độ | Ô nhập giá trị mới cho tiến độ. | Thông tin kết nối được cập nhật; trạng thái thành công/thất bại.
+MG-09.4.2.3 | Hoàn tất | Chọn sự cố; ô nhập nội dung xử lý/tiến độ; ô nhập lý do/chi phí/phương án. | Trạng thái sự cố sau xử lý; nhật ký xử lý; thông báo liên quan.
+MG-09.4.3 | Sự cố mức CAO | Chọn sự cố; ô nhập nội dung xử lý/tiến độ; ô nhập lý do/chi phí/phương án. | Kết quả sự cố mức cao; thông báo trạng thái thành công/thất bại.
+MG-09.4.3.1 | Đánh giá tình hình | Ô nhập nội dung đánh giá. | Kết quả đánh giá tình hình; thông báo trạng thái thành công/thất bại.
+MG-09.4.3.2 | Tạo đề xuất xử lý | Ô nhập lý do; chi phí dự kiến; phương án xử lý. | Kết nối mới được tạo với mã định danh; thông báo thành công/lỗi.
+MG-09.4.3.2.1 | Nhập lý do | Ô nhập lý do. | Giá trị lý do được tiếp nhận và kiểm tra hợp lệ; thông báo lỗi nếu có.
+MG-09.4.3.2.2 | Nhập chi phí dự kiến | Ô nhập chi phí dự kiến (số tiền). | Giá trị chi phí dự kiến được tiếp nhận và kiểm tra hợp lệ; thông báo lỗi nếu có.
+MG-09.4.3.2.3 | Nhập phương án xử lý | Ô nhập phương án xử lý. | Giá trị phương án xử lý được tiếp nhận và kiểm tra hợp lệ; thông báo lỗi nếu có.
+MG-09.4.3.2.4 | Gửi lên Chủ trọ | Nút Gửi. | Yêu cầu kết nối gửi thành công hoặc lỗi; mã tham chiếu/trạng thái tiếp nhận.
+MG-09.4.3.3 | Chờ Chủ trọ duyệt | Không nhập — trạng thái do hệ thống hiển thị. | Trạng thái đề xuất mới; kết quả nghiệp vụ (nếu duyệt); thông báo đến người quản lý.
+MG-09.4.3.4 | Nếu được duyệt → thực thi | Không nhập — hệ thống thực thi sau khi duyệt. | Trạng thái đề xuất mới; kết quả nghiệp vụ (nếu duyệt); thông báo đến người quản lý.
+MG-09.4.3.5 | Nếu bị từ chối → tìm phương án khác | Ô nhập phương án xử lý mới. | Trạng thái đề xuất mới; kết quả nghiệp vụ (nếu duyệt); thông báo đến người quản lý.
+MG-09.4.4 | Sự cố mức KHẨN CẤP | Chọn sự cố; ô nhập nội dung xử lý/tiến độ; ô nhập lý do/chi phí/phương án. | Kết quả sự cố mức khẩn cấp; thông báo trạng thái thành công/thất bại.
+MG-09.4.4.1 | Xử lý tình huống khẩn cấp trước | Ô nhập nội dung xử lý khẩn cấp. | Trạng thái sự cố sau xử lý; nhật ký xử lý; thông báo liên quan.
+MG-09.4.4.2 | Báo cáo ngay cho Chủ trọ | Nút Báo cáo Chủ trọ. | Kết quả báo cáo ngay cho chủ trọ; thông báo trạng thái thành công/thất bại.
+MG-09.4.4.3 | Sau khi ổn định → tạo đề xuất xử lý triệt để | Ô nhập lý do; chi phí dự kiến; phương án xử lý. | Kết nối mới được tạo với mã định danh; thông báo thành công/lỗi.
+MG-09.4.4.4 | Chờ Chủ trọ duyệt | Không nhập — trạng thái do hệ thống hiển thị. | Trạng thái đề xuất mới; kết quả nghiệp vụ (nếu duyệt); thông báo đến người quản lý.
+MG-09.5 | Cập nhật tiến độ xử lý | Ô nhập nội dung tiến độ. | Thông tin kết nối được cập nhật; trạng thái thành công/thất bại.
+MG-09.6 | Hoàn tất xử lý | Ô nhập kết quả xử lý. | Trạng thái sự cố sau xử lý; nhật ký xử lý; thông báo liên quan.
+MG-09.7 | Xem đề xuất đã gửi | Ô lọc theo trạng thái. | Thông tin kết nối tương ứng và trạng thái cần theo dõi.
+MG-09.7.1 | Danh sách đề xuất | Chọn sự cố; ô nhập nội dung xử lý/tiến độ; ô nhập lý do/chi phí/phương án. | Kết quả danh sách đề xuất; thông báo trạng thái thành công/thất bại.
+MG-09.7.2 | Trạng thái (chờ duyệt / đã duyệt / từ chối) | Chọn sự cố; ô nhập nội dung xử lý/tiến độ; ô nhập lý do/chi phí/phương án. | Trạng thái đề xuất mới; kết quả nghiệp vụ (nếu duyệt); thông báo đến người quản lý.
+MG-09.8 | Thống kê sự cố | Ô chọn kỳ thống kê. | Giá trị thống kê của thống kê sự cố; bảng hoặc biểu đồ tương ứng.
+MG-09.8.1 | Số sự cố theo mức độ | Chọn sự cố; ô nhập nội dung xử lý/tiến độ; ô nhập lý do/chi phí/phương án. | Giá trị thống kê của số sự cố theo mức độ; bảng hoặc biểu đồ tương ứng.
+MG-09.8.2 | Số sự cố theo trạng thái | Chọn sự cố; ô nhập nội dung xử lý/tiến độ; ô nhập lý do/chi phí/phương án. | Giá trị thống kê của số sự cố theo trạng thái; bảng hoặc biểu đồ tương ứng.
+MG-09.8.3 | Thời gian xử lý trung bình | Chọn sự cố; ô nhập nội dung xử lý/tiến độ; ô nhập lý do/chi phí/phương án. | Trạng thái sự cố sau xử lý; nhật ký xử lý; thông báo liên quan.
+MG-10 | TÌM KIẾM NGƯỜI THUÊ | Ô nhập từ khóa tìm kiếm. | Bảng người thuê khớp tiêu chí.
+MG-10.1 | Tìm theo họ tên / CCCD / SĐT | Ô nhập từ khóa; để trống = tải lại đầy đủ. | Danh sách khớp tiêu chí trong khu được giao, tối đa 50 dòng.
+MG-11 | PHỤ LỤC HỢP ĐỒNG & NGƯỜI Ở CHUNG | Ô chọn hợp đồng; form thêm/sửa người ở chung. | Danh sách người ở chung; bản in phụ lục.
+MG-11.1 | Xem phụ lục hợp đồng | Chọn dòng hợp đồng; nút Người ở chung. | Thông tin 2 bên và bảng người ở chung.
+MG-11.2 | Nhập người ở chung (3 người → 3 dòng) | Ô nhập họ tên; ô nhập CCCD; ô chọn ngày sinh; ô nhập quê quán; ô nhập nơi học/làm; ô nhập SĐT. | Dòng được thêm vào bảng; báo lỗi nếu CCCD sai hoặc trùng.
+MG-11.3 | Lưu phụ lục | Nút Lưu phụ lục. | Danh sách được thay toàn bộ trong 1 giao dịch; thông báo đã lưu.
+MG-11.4 | In phụ lục | Nút In phụ lục. | Bản in phụ lục với đầy đủ người ở chung và chữ ký 2 bên.
+
+### LT - LeTan rows= 20 cols= 4 
+Mã | Tên chức năng | Input (đầu vào) | Output (đầu ra)
+LT-01 | ĐĂNG NHẬP & PHIÊN LÀM VIỆC | Ô nhập tên tài khoản; ô nhập mật khẩu. | Token phiên + vai trò Lễ tân + chuyên môn; chuyển sang màn hình lịch kiểm tra.
+LT-01.1 | Đăng nhập | Tên tài khoản; mật khẩu. | Token phiên; vai trò Lễ tân; họ tên hiển thị trên thanh người dùng.
+LT-01.1.1 | Nhập tên tài khoản | Ô nhập văn bản (bắt buộc). | Giá trị được ghi nhận; báo lỗi nếu bỏ trống.
+LT-01.1.2 | Nhập mật khẩu | Ô nhập mật khẩu (bắt buộc, ẩn ký tự). | Giá trị được tiếp nhận; báo lỗi nếu bỏ trống.
+LT-01.1.3 | Nhận token + vai trò Lễ tân + chuyên môn | Không nhập — hệ thống trả về sau khi xác thực. | Vai trò Lễ tân và chuyên môn hiển thị trên thanh người dùng.
+LT-01.1.4 | Tài khoản bị khóa | Tên tài khoản của tài khoản đã bị khóa. | Từ chối đăng nhập kèm thông báo tài khoản đang bị khóa.
+LT-01.2 | Đăng xuất | Nút Đăng xuất (không có trường nhập). | Phiên bị kết thúc; quay về màn hình đăng nhập.
+LT-02 | DUYỆT LỊCH KIỂM TRA PHÒNG | Bảng lịch; nút Duyệt / Từ chối; ô chọn nhân viên. | Danh sách lịch; trạng thái sau duyệt.
+LT-02.1 | Xem danh sách lịch kiểm tra | Bộ lọc tùy chọn. | Bảng: phòng, khách (họ tên + SĐT), thời gian, trạng thái, ghi chú, nhân viên được gán.
+LT-02.1.1 | Hiển thị: phòng, khách, thời gian, trạng thái | Không nhập — hiển thị dữ liệu lịch. | Bảng lịch kèm nhãn trạng thái: Chờ duyệt / Đã duyệt / Đã từ chối / Đang làm / Hoàn thành.
+LT-02.1.2 | Ưu tiên lịch chờ duyệt | Không nhập — hệ thống sắp xếp theo trạng thái. | Lịch Chờ duyệt được đưa lên đầu danh sách.
+LT-02.2 | Duyệt lịch | Chọn lịch; nút Duyệt. | Trạng thái chuyển từ Chờ duyệt sang Đã duyệt; thông báo thành công.
+LT-02.2.1 | Chặn duyệt sai bước | Không nhập — hệ thống chặn theo trạng thái lịch. | Từ chối thao tác kèm thông báo chỉ lịch chờ duyệt mới được duyệt.
+LT-02.3 | Từ chối lịch | Chọn lịch; ô nhập lý do từ chối (bắt buộc). | Trạng thái chuyển sang Đã từ chối; lý do hiển thị cho khách.
+LT-02.3.1 | Nhập lý do từ chối | Ô nhập văn bản (bắt buộc). | Giá trị được kiểm tra; báo lỗi nếu bỏ trống.
+LT-02.4 | Gán nhân viên cho lịch | Ô chọn nhân viên (chỉ hiện với lịch Đã duyệt); nút Gán. | Lịch được gắn nhân viên; nhân viên thấy việc trong danh sách của mình.
+LT-02.4.1 | Chọn nhân viên theo chuyên môn | Ô chọn nhân viên (danh sách kèm chuyên môn, trừ lễ tân). | Nhân viên được gán; cảnh báo nếu chưa chọn.
+LT-03 | TRA CỨU PHÒNG ĐỂ TƯ VẤN | Ô lọc theo trạng thái phòng. | Danh sách phòng để tư vấn cho khách.
+LT-03.1 | Xem danh sách phòng | Ô lọc theo trạng thái. | Bảng: số phòng, giá thuê, sức chứa, trạng thái (chỉ đọc).
+
+### NV - NhanVien rows= 17 cols= 4 
+Mã | Tên chức năng | Input (đầu vào) | Output (đầu ra)
+NV-01 | ĐĂNG NHẬP & PHIÊN LÀM VIỆC | Ô nhập tên tài khoản; ô nhập mật khẩu. | Token phiên + vai trò Nhân viên + chuyên môn; chuyển sang màn hình việc được giao.
+NV-01.1 | Đăng nhập | Tên tài khoản; mật khẩu. | Token phiên; vai trò Nhân viên; chuyên môn (Dọn phòng / Thu tiền / Kỹ thuật).
+NV-01.1.1 | Nhập tên tài khoản | Ô nhập văn bản (bắt buộc). | Giá trị được ghi nhận; báo lỗi nếu bỏ trống.
+NV-01.1.2 | Nhập mật khẩu | Ô nhập mật khẩu (bắt buộc, ẩn ký tự). | Giá trị được tiếp nhận; báo lỗi nếu bỏ trống.
+NV-01.1.3 | Nhận token + vai trò Nhân viên + chuyên môn | Không nhập — hệ thống trả về sau khi xác thực. | Chuyên môn hiển thị trên thanh người dùng.
+NV-01.2 | Đăng xuất | Nút Đăng xuất (không có trường nhập). | Phiên bị kết thúc; quay về màn hình đăng nhập.
+NV-02 | VIỆC ĐƯỢC GIAO | Bảng việc; nút Nhận việc; nút Hoàn thành; ô nhập kết quả. | Danh sách việc; trạng thái sau xử lý.
+NV-02.1 | Xem việc của tôi | Bộ lọc tùy chọn (Server suy ra nhân viên từ phiên). | Bảng: phòng, khách (họ tên + SĐT), thời gian, trạng thái, ghi chú.
+NV-02.1.1 | Đếm việc chưa xong | Không nhập — hệ thống đếm từ danh sách đã tải. | Số việc còn phải làm hiển thị trên nhãn tab.
+NV-02.2 | Nhận việc | Chọn việc; nút Nhận việc. | Trạng thái chuyển từ Đã duyệt sang Đang làm; thông báo thành công.
+NV-02.2.1 | Chặn nhận việc của người khác | Không nhập — hệ thống chặn theo phiên đăng nhập. | Từ chối thao tác kèm thông báo không có quyền nhận việc này.
+NV-02.3 | Hoàn thành việc | Ô nhập kết quả (bắt buộc); nút Hoàn thành. | Trạng thái chuyển sang Hoàn thành; kết quả được lưu cho lễ tân xem.
+NV-02.3.1 | Ghi kết quả dọn phòng | Ô nhập văn bản kết quả dọn phòng. | Kết quả được lưu vào lịch; thông báo đã ghi nhận.
+NV-02.3.2 | Ghi kết quả thu tiền | Ô nhập văn bản kết quả thu tiền (số tiền đã thu, ghi chú). | Kết quả được lưu vào lịch; thông báo đã ghi nhận.
+NV-02.3.3 | Ghi kết quả xử lý kỹ thuật | Ô nhập văn bản kết quả xử lý / hỏng hóc cần sửa. | Kết quả được lưu vào lịch; thông báo đã ghi nhận.
+NV-02.3.4 | Chặn hoàn thành sai bước | Không nhập — hệ thống chặn theo trạng thái. | Từ chối thao tác kèm thông báo đúng bước quy trình.
+
+### TN - KhachThue rows= 111 cols= 4 
+Mã | Tên chức năng | Input (đầu vào) | Output (đầu ra)
+TN-01 | Đăng nhập & tài khoản cá nhân | Ô nhập tên tài khoản (CCCD); ô nhập mật khẩu. | Kết quả tổng hợp nhóm đăng nhập & tài khoản cá nhân; dữ liệu hoặc phản hồi từ các chức năng con.
+TN-01.1 | Đăng nhập | Tên tài khoản; mật khẩu. | Token phiên đăng nhập; vai trò TN; thông tin tài khoản/phạm vi được cấp hoặc thông báo lỗi.
+TN-01.1.1 | Nhập tên đăng nhập | Ô nhập tên tài khoản (bắt buộc). | Tên đăng nhập được ghi nhận trên biểu mẫu; thông báo nếu bỏ trống.
+TN-01.1.2 | Nhập mật khẩu | Ô nhập mật khẩu (bắt buộc, ẩn ký tự). | Giá trị trường mật khẩu được tiếp nhận; cảnh báo nếu không đạt yêu cầu.
+TN-01.1.3 | Nhận Token + Role = TENANT | Không nhập — hệ thống trả về sau khi xác thực. | Token truy cập; vai trò; khu trọ được phân quyền nếu áp dụng.
+TN-01.2 | Đăng xuất | Nút Đăng xuất (không có trường nhập). | Phiên đăng nhập bị kết thúc; trở về màn hình đăng nhập.
+TN-01.3 | Đổi mật khẩu cá nhân | Mật khẩu cũ; mật khẩu mới; nhập lại mật khẩu mới. | Trạng thái đổi mật khẩu; thông báo thành công hoặc lý do không hợp lệ.
+TN-01.3.1 | Nhập mật khẩu cũ | Ô nhập mật khẩu cũ (bắt buộc, ẩn ký tự). | Giá trị trường mật khẩu được tiếp nhận; cảnh báo nếu không đạt yêu cầu.
+TN-01.3.2 | Nhập mật khẩu mới (≥ 6 ký tự) | Ô nhập mật khẩu mới (bắt buộc, ≥ 6 ký tự, ẩn ký tự). | Giá trị trường mật khẩu được tiếp nhận; cảnh báo nếu không đạt yêu cầu.
+TN-01.3.3 | Nhập lại mật khẩu mới | Ô nhập lại mật khẩu mới (bắt buộc, ẩn ký tự). | Giá trị trường mật khẩu được tiếp nhận; cảnh báo nếu không đạt yêu cầu.
+TN-02 | Xem thông tin cá nhân | Không nhập — hồ sơ lấy từ phiên; chỉ nhập khi sửa SĐT/nơi học/làm. | Kết quả tổng hợp nhóm xem thông tin cá nhân; dữ liệu hoặc phản hồi từ các chức năng con.
+TN-02.1 | Xem hồ sơ cá nhân | Không nhập (dữ liệu lấy từ phiên). | Thông tin kết nối tương ứng và trạng thái cần theo dõi.
+TN-02.1.1 | Hiển thị: họ tên, ngày sinh, CCCD, SĐT, quê quán | Không nhập — hiển thị họ tên, ngày sinh, CCCD, SĐT, quê quán. | Thông tin hiển thị: họ tên, ngày sinh, CCCD, SĐT, quê quán.
+TN-02.1.2 | Hiển thị: nơi học tập/làm việc, trạng thái tạm trú | Không nhập — hiển thị nơi học tập/làm việc, trạng thái tạm trú. | Thông tin hiển thị: nơi học tập/làm việc, trạng thái tạm trú.
+TN-02.2 | Cập nhật thông tin liên hệ | Ô nhập giá trị mới cho thông tin liên hệ. | Thông tin kết nối được cập nhật; trạng thái thành công/thất bại.
+TN-02.2.1 | Sửa số điện thoại | Ô nhập giá trị mới cho số điện thoại. | Thông tin kết nối được cập nhật; trạng thái thành công/thất bại.
+TN-02.2.2 | Sửa nơi học tập/làm việc | Ô nhập giá trị mới cho nơi học tập/làm việc. | Thông tin kết nối được cập nhật; trạng thái thành công/thất bại.
+TN-02.2.3 | Hiển thị kết quả | Không nhập — hiển thị kết quả. | Giao diện hiển thị kết quả; trạng thái lỗi/rỗng nếu có.
+TN-03 | Xác nhận phòng đang ở | Nút Xác nhận kèm hộp xác nhận cho phòng đang ở. | Kết quả tổng hợp nhóm xác nhận phòng đang ở; dữ liệu hoặc phản hồi từ các chức năng con.
+TN-03.1 | Xác nhận bằng mã QR | Ô chọn ảnh QR; camera quét mã QR. | Kết quả xác nhận; trạng thái kết nối được cập nhật nếu hợp lệ.
+TN-03.1.1 | Mở chức năng quét mã QR | Nút Mở quét QR (bật camera). | Kết quả mở chức năng quét mã qr; thông báo trạng thái thành công/thất bại.
+TN-03.1.2 | Quét mã QR do Người quản lý cung cấp | Camera quét mã QR. | Kết quả quét mã qr do người quản lý cung cấp; thông báo trạng thái thành công/thất bại.
+TN-03.1.3 | Gửi mã xác nhận lên Server | Nút Gửi mã (mã QR hoặc PIN đã nhập). | Yêu cầu kết nối gửi thành công hoặc lỗi; mã tham chiếu/trạng thái tiếp nhận.
+TN-03.1.4 | Kiểm tra mã QR hợp lệ và còn hiệu lực | Không nhập — hệ thống kiểm tra mã đã nhận. | Kết quả hợp lệ/không hợp lệ; thông báo lỗi nếu có.
+TN-03.1.5 | Xác nhận Người thuê thuộc phòng | Không nhập — hệ thống đối chiếu mã với phòng. | Kết quả xác nhận; trạng thái kết nối được cập nhật nếu hợp lệ.
+TN-03.1.6 | Hiển thị kết quả xác nhận | Không nhập — hiển thị kết quả. | Giao diện hiển thị kết quả xác nhận; trạng thái lỗi/rỗng nếu có.
+TN-03.2 | Xác nhận bằng mã số | Ô nhập mã PIN (tối đa 8 chữ số). | Kết quả xác nhận; trạng thái kết nối được cập nhật nếu hợp lệ.
+TN-03.2.1 | Nhập mã xác nhận phòng | Ô nhập mã PIN (tối đa 8 chữ số). | Giá trị mã xác nhận phòng được tiếp nhận và kiểm tra hợp lệ; thông báo lỗi nếu có.
+TN-03.2.2 | Gửi mã xác nhận lên Server | Nút Gửi mã (mã QR hoặc PIN đã nhập). | Yêu cầu kết nối gửi thành công hoặc lỗi; mã tham chiếu/trạng thái tiếp nhận.
+TN-03.2.3 | Kiểm tra mã hợp lệ và còn hiệu lực | Không nhập — hệ thống kiểm tra mã đã nhận. | Kết quả hợp lệ/không hợp lệ; thông báo lỗi nếu có.
+TN-03.2.4 | Xác nhận Người thuê thuộc phòng | Không nhập — hệ thống đối chiếu mã với phòng. | Kết quả xác nhận; trạng thái kết nối được cập nhật nếu hợp lệ.
+TN-03.2.5 | Hiển thị kết quả xác nhận | Không nhập — hiển thị kết quả. | Giao diện hiển thị kết quả xác nhận; trạng thái lỗi/rỗng nếu có.
+TN-03.3 | Xác nhận thành công | Không nhập — hệ thống ghi nhận khi mã hợp lệ. | Kết quả xác nhận; trạng thái kết nối được cập nhật nếu hợp lệ.
+TN-03.3.1 | Gán Người thuê vào phòng | Không nhập — hệ thống gán sau khi mã hợp lệ. | Kết quả gán người thuê vào phòng; thông báo trạng thái thành công/thất bại.
+TN-03.3.2 | Cập nhật trạng thái phòng | Không nhập — hệ thống cập nhật theo trạng thái mới. | Thông tin kết nối được cập nhật; trạng thái thành công/thất bại.
+TN-03.3.3 | Ghi nhận thời gian xác nhận | Không nhập — hệ thống ghi mốc thời gian. | Kết quả xác nhận; trạng thái kết nối được cập nhật nếu hợp lệ.
+TN-03.4 | Xử lý xác nhận thất bại | Ô chọn ảnh QR; ô nhập mã PIN. | Kết quả xác nhận; trạng thái kết nối được cập nhật nếu hợp lệ.
+TN-03.4.1 | Mã QR không hợp lệ | Giá trị mã QR người dùng gửi (để hiện thông báo lỗi). | Kết quả mã qr không hợp lệ; thông báo trạng thái thành công/thất bại.
+TN-03.4.2 | Mã số không hợp lệ | Giá trị mã PIN người dùng gửi (để hiện thông báo lỗi). | Giá trị thống kê của mã số không hợp lệ; bảng hoặc biểu đồ tương ứng.
+TN-03.4.3 | Mã đã hết hạn hoặc đã được sử dụng | Giá trị mã người dùng gửi (để hiện thông báo lỗi). | Kết quả mã đã hết hạn hoặc đã được sử dụng; thông báo trạng thái thành công/thất bại.
+TN-03.4.4 | Hiển thị thông báo lỗi | Không nhập — hiển thị thông báo lỗi. | Giao diện hiển thị thông báo lỗi; trạng thái lỗi/rỗng nếu có.
+TN-04 | Xem thông tin phòng đang ở | Không nhập — dữ liệu lấy từ phiên đăng nhập. | Kết quả tổng hợp nhóm xem thông tin phòng đang ở; dữ liệu hoặc phản hồi từ các chức năng con.
+TN-04.1 | Xem thông tin phòng | Không nhập (dữ liệu lấy từ phiên). | Thông tin kết nối tương ứng và trạng thái cần theo dõi.
+TN-04.1.1 | Hiển thị số phòng, giá thuê, sức chứa | Không nhập — hiển thị số phòng, giá thuê, sức chứa. | Giao diện hiển thị số phòng, giá thuê, sức chứa; trạng thái lỗi/rỗng nếu có.
+TN-04.1.2 | Hiển thị danh sách thành viên cùng phòng | Không nhập — hiển thị danh sách thành viên cùng phòng. | Giao diện hiển thị danh sách thành viên cùng phòng; trạng thái lỗi/rỗng nếu có.
+TN-04.2 | Xem hợp đồng của phòng | Không nhập (dữ liệu lấy từ phiên). | Thông tin kết nối tương ứng và trạng thái cần theo dõi.
+TN-04.2.1 | Hiển thị: ngày BĐ, ngày KT, giá thuê, tiền cọc | Không nhập — hiển thị ngày BĐ, ngày KT, giá thuê, tiền cọc. | Thông tin hiển thị: ngày BĐ, ngày KT, giá thuê, tiền cọc.
+TN-04.2.2 | Hiển thị người đại diện | Không nhập — hiển thị người đại diện. | Giao diện hiển thị người đại diện; trạng thái lỗi/rỗng nếu có.
+TN-05 | Xem chỉ số điện nước | Ô chọn khoảng tháng. | Kết quả tổng hợp nhóm xem chỉ số điện nước; dữ liệu hoặc phản hồi từ các chức năng con.
+TN-05.1 | Xem chỉ số tháng hiện tại | Không nhập (dữ liệu lấy từ phiên). | Thông tin kết nối tương ứng và trạng thái cần theo dõi.
+TN-05.1.1 | Hiển thị chỉ số đầu kỳ, cuối kỳ | Không nhập — hiển thị chỉ số đầu kỳ, cuối kỳ. | Giao diện hiển thị chỉ số đầu kỳ, cuối kỳ; trạng thái lỗi/rỗng nếu có.
+TN-05.1.2 | Hiển thị số tiêu thụ điện, nước | Không nhập — hiển thị số tiêu thụ điện, nước. | Giao diện hiển thị số tiêu thụ điện, nước; trạng thái lỗi/rỗng nếu có.
+TN-05.2 | Xem lịch sử chỉ số | Ô chọn phòng; khoảng thời gian. | Lịch sử kết nối và thời điểm/chi tiết thay đổi.
+TN-05.2.1 | Chọn khoảng tháng | Ô chọn tháng bắt đầu; ô chọn tháng kết thúc. | Khoảng thời gian được xác nhận; cảnh báo nếu khoảng không hợp lệ.
+TN-05.2.2 | Hiển thị bảng chỉ số theo tháng | Không nhập — hiển thị bảng chỉ số theo tháng. | Giao diện hiển thị bảng chỉ số theo tháng; trạng thái lỗi/rỗng nếu có.
+TN-06 | Xem hóa đơn và thanh toán | Ô lọc theo tháng. | Kết quả tổng hợp nhóm xem hóa đơn và thanh toán; dữ liệu hoặc phản hồi từ các chức năng con.
+TN-06.1 | Xem danh sách hóa đơn của phòng mình | Chọn dòng để xem danh sách hóa đơn của phòng mình. | Danh sách kết nối theo phạm vi và trạng thái tương ứng.
+TN-06.1.1 | Hiển thị: tháng, tổng tiền, trạng thái | Không nhập — hiển thị tháng, tổng tiền, trạng thái. | Thông tin hiển thị: tháng, tổng tiền, trạng thái.
+TN-06.1.2 | Lọc theo tháng | Ô lọc theo tháng. | Danh sách kết nối đáp ứng bộ lọc.
+TN-06.2 | Xem chi tiết hóa đơn | Chọn dòng hóa đơn. | Hồ sơ/chi tiết kết nối tương ứng; thông báo nếu không tồn tại.
+TN-06.2.1 | Hiển thị: tiền phòng, tiền điện, tiền nước, phí khác | Không nhập — hiển thị tiền phòng, tiền điện, tiền nước, phí khác. | Thông tin hiển thị: tiền phòng, tiền điện, tiền nước, phí khác.
+TN-06.2.2 | Hiển thị tổng tiền và trạng thái thanh toán | Không nhập — hiển thị tổng tiền và trạng thái thanh toán. | Giao diện hiển thị tổng tiền và trạng thái thanh toán; trạng thái lỗi/rỗng nếu có.
+TN-06.3 | Xem lịch sử thanh toán | Ô chọn khoảng thời gian. | Lịch sử kết nối và thời điểm/chi tiết thay đổi.
+TN-06.3.1 | Hiển thị các hóa đơn đã thanh toán | Không nhập — hiển thị các hóa đơn đã thanh toán. | Giao diện hiển thị các hóa đơn đã thanh toán; trạng thái lỗi/rỗng nếu có.
+TN-06.3.2 | Hiển thị thời gian thu tiền | Không nhập — hiển thị thời gian thu tiền. | Giao diện hiển thị thời gian thu tiền; trạng thái lỗi/rỗng nếu có.
+TN-07 | BÁO CÁO SỰ CỐ | Loại sự cố (chọn); tiêu đề; mô tả; mức độ (chọn); ảnh đính kèm. | Kết quả tổng hợp nhóm báo cáo sự cố; dữ liệu hoặc phản hồi từ các chức năng con.
+TN-07.1 | Gửi báo cáo sự cố mới | Nút Gửi (dữ liệu báo cáo sự cố mới đã nhập ở trên). | Yêu cầu kết nối gửi thành công hoặc lỗi; mã tham chiếu/trạng thái tiếp nhận.
+TN-07.1.1 | Chọn loại sự cố | Ô chọn loại: Điện / Nước / Cơ sở vật chất / An ninh / Tiếng ồn - vệ sinh / Khác. | Mục đã chọn được gắn vào biểu mẫu/yêu cầu; cảnh báo nếu không đủ điều kiện.
+TN-07.1.1.1 | Sự cố điện (mất điện, chập điện, cháy) | Giá trị của ô chọn loại sự cố. | Kết quả sự cố điện (mất điện, chập điện, cháy); thông báo trạng thái thành công/thất bại.
+TN-07.1.1.2 | Sự cố nước (rò rỉ, mất nước, ngập) | Giá trị của ô chọn loại sự cố. | Kết quả sự cố nước (rò rỉ, mất nước, ngập); thông báo trạng thái thành công/thất bại.
+TN-07.1.1.3 | Sự cố cơ sở vật chất (cửa hỏng, mái dột, tường nứt) | Giá trị của ô chọn loại sự cố. | Kết quả sự cố cơ sở vật chất (cửa hỏng, mái dột, tường nứt); thông báo trạng thái thành công/thất bại.
+TN-07.1.1.4 | Sự cố an ninh (trộm cắp, người lạ) | Giá trị của ô chọn loại sự cố. | Kết quả sự cố an ninh (trộm cắp, người lạ); thông báo trạng thái thành công/thất bại.
+TN-07.1.1.5 | Sự cố tiếng ồn / vệ sinh | Giá trị của ô chọn loại sự cố. | Kết quả sự cố tiếng ồn / vệ sinh; thông báo trạng thái thành công/thất bại.
+TN-07.1.1.6 | Sự cố khác | Giá trị của ô chọn loại sự cố. | Kết quả sự cố khác; thông báo trạng thái thành công/thất bại.
+TN-07.1.2 | Nhập tiêu đề sự cố | Ô nhập tiêu đề sự cố (bắt buộc). | Giá trị tiêu đề sự cố được tiếp nhận và kiểm tra hợp lệ; thông báo lỗi nếu có.
+TN-07.1.3 | Nhập mô tả chi tiết | Ô nhập mô tả chi tiết (nhiều dòng). | Giá trị mô tả chi tiết được tiếp nhận và kiểm tra hợp lệ; thông báo lỗi nếu có.
+TN-07.1.4 | Chọn mức độ khẩn cấp | Ô chọn mức độ: Thấp / Trung bình / Cao / Khẩn cấp. | Mục đã chọn được gắn vào biểu mẫu/yêu cầu; cảnh báo nếu không đủ điều kiện.
+TN-07.1.4.1 | Thấp (xử lý trong 7 ngày) | Giá trị của ô chọn mức độ khẩn cấp. | Trạng thái sự cố sau xử lý; nhật ký xử lý; thông báo liên quan.
+TN-07.1.4.1.1 | Gửi thẳng Người QL, không cần duyệt | Nút Gửi (dữ liệu thẳng Người QL, không cần duyệt đã nhập ở trên). | Trạng thái đề xuất mới; kết quả nghiệp vụ (nếu duyệt); thông báo đến người quản lý.
+TN-07.1.4.2 | Trung bình (xử lý trong 3 ngày) | Giá trị của ô chọn mức độ khẩn cấp. | Trạng thái sự cố sau xử lý; nhật ký xử lý; thông báo liên quan.
+TN-07.1.4.2.1 | Gửi thẳng Người QL, không cần duyệt | Nút Gửi (dữ liệu thẳng Người QL, không cần duyệt đã nhập ở trên). | Trạng thái đề xuất mới; kết quả nghiệp vụ (nếu duyệt); thông báo đến người quản lý.
+TN-07.1.4.3 | Cao (xử lý trong 24 giờ) | Giá trị của ô chọn mức độ khẩn cấp. | Trạng thái sự cố sau xử lý; nhật ký xử lý; thông báo liên quan.
+TN-07.1.4.3.1 | Gửi Người QL + Chủ trọ, cần duyệt | Nút Gửi (dữ liệu Người QL + Chủ trọ, cần duyệt đã nhập ở trên). | Trạng thái đề xuất mới; kết quả nghiệp vụ (nếu duyệt); thông báo đến người quản lý.
+TN-07.1.4.4 | Khẩn cấp (xử lý ngay) | Giá trị của ô chọn mức độ khẩn cấp. | Trạng thái sự cố sau xử lý; nhật ký xử lý; thông báo liên quan.
+TN-07.1.4.4.1 | Gửi Người QL + Chủ trọ ngay lập tức | Nút Gửi (dữ liệu Người QL + Chủ trọ ngay lập tức đã nhập ở trên). | Kết nối mới được tạo với mã định danh; thông báo thành công/lỗi.
+TN-07.1.5 | Đính kèm ảnh (nếu có) | Ô chọn tệp ảnh (không bắt buộc). | Kết quả đính kèm ảnh (nếu có); thông báo trạng thái thành công/thất bại.
+TN-07.1.6 | Gửi báo cáo lên Server | Nút Gửi báo cáo. | Yêu cầu kết nối gửi thành công hoặc lỗi; mã tham chiếu/trạng thái tiếp nhận.
+TN-07.1.7 | Hiển thị kết quả + mã sự cố | Không nhập — hiển thị mã sự cố vừa tạo. | Giao diện hiển thị kết quả + mã sự cố; trạng thái lỗi/rỗng nếu có.
+TN-07.2 | Xem danh sách sự cố đã báo | Ô lọc theo trạng thái; ô lọc theo loại. | Danh sách kết nối theo phạm vi và trạng thái tương ứng.
+TN-07.2.1 | Hiển thị: mã sự cố, loại, tiêu đề, ngày gửi, trạng thái | Không nhập — hiển thị mã sự cố, loại, tiêu đề, ngày gửi, trạng thái. | Thông tin hiển thị: mã sự cố, loại, tiêu đề, ngày gửi, trạng thái.
+TN-07.2.2 | Lọc theo trạng thái / loại | Ô lọc theo trạng thái / loại. | Danh sách kết nối đáp ứng bộ lọc.
+TN-07.3 | Xem chi tiết sự cố | Chọn dòng sự cố. | Hồ sơ/chi tiết kết nối tương ứng; thông báo nếu không tồn tại.
+TN-07.3.1 | Hiển thị thông tin sự cố đã báo | Không nhập — hiển thị thông tin sự cố đã báo. | Giao diện hiển thị thông tin sự cố đã báo; trạng thái lỗi/rỗng nếu có.
+TN-07.3.2 | Hiển thị người tiếp nhận | Không nhập — hiển thị người tiếp nhận. | Giao diện hiển thị người tiếp nhận; trạng thái lỗi/rỗng nếu có.
+TN-07.3.3 | Hiển thị lịch sử xử lý | Không nhập — hiển thị lịch sử xử lý. | Giao diện hiển thị lịch sử xử lý; trạng thái lỗi/rỗng nếu có.
+TN-07.3.4 | Hiển thị phản hồi từ Người quản lý / Chủ trọ | Không nhập — hiển thị phản hồi từ Người quản lý / Chủ trọ. | Giao diện hiển thị phản hồi từ người quản lý / chủ trọ; trạng thái lỗi/rỗng nếu có.
+TN-07.4 | Theo dõi trạng thái xử lý | Không nhập — trạng thái do hệ thống hiển thị. | Thông tin kết nối tương ứng và trạng thái cần theo dõi.
+TN-07.4.1 | Đã gửi (chờ tiếp nhận) | Không nhập — trạng thái do hệ thống hiển thị. | Yêu cầu kết nối gửi thành công hoặc lỗi; mã tham chiếu/trạng thái tiếp nhận.
+TN-07.4.2 | Đã tiếp nhận (đang xử lý) | Không nhập — trạng thái do hệ thống hiển thị. | Trạng thái sự cố sau xử lý; nhật ký xử lý; thông báo liên quan.
+TN-07.4.3 | Chờ Chủ trọ duyệt (nếu mức Cao / Khẩn cấp) | Không nhập — trạng thái do hệ thống hiển thị. | Trạng thái đề xuất mới; kết quả nghiệp vụ (nếu duyệt); thông báo đến người quản lý.
+TN-07.4.4 | Đã duyệt — đang xử lý | Không nhập — trạng thái do hệ thống hiển thị. | Trạng thái đề xuất mới; kết quả nghiệp vụ (nếu duyệt); thông báo đến người quản lý.
+TN-07.4.5 | Bị từ chối (kèm lý do) | Không nhập — trạng thái do hệ thống hiển thị. | Trạng thái đề xuất mới; kết quả nghiệp vụ (nếu duyệt); thông báo đến người quản lý.
+TN-07.4.6 | Đã xử lý xong | Không nhập — trạng thái do hệ thống hiển thị. | Trạng thái sự cố sau xử lý; nhật ký xử lý; thông báo liên quan.
+TN-07.4.7 | Đã đóng (hoàn tất) | Không nhập — trạng thái do hệ thống hiển thị. | Trạng thái sự cố sau xử lý; nhật ký xử lý; thông báo liên quan.
+TN-07.5 | Phản hồi / bổ sung thông tin | Ô nhập mô tả bổ sung; ô chọn ảnh bổ sung. | Kết quả phản hồi / bổ sung thông tin; thông báo trạng thái thành công/thất bại.
+TN-07.5.1 | Gửi thêm mô tả | Ô nhập mô tả bổ sung. | Kết nối mới được tạo với mã định danh; thông báo thành công/lỗi.
+TN-07.5.2 | Gửi thêm ảnh | Ô chọn tệp ảnh bổ sung. | Kết nối mới được tạo với mã định danh; thông báo thành công/lỗi.
+TN-07.5.3 | Xác nhận đã xử lý xong | Nút Xác nhận đã xử lý xong. | Kết quả xác nhận; trạng thái kết nối được cập nhật nếu hợp lệ.
+TN-08 | Tra cứu | Ô nhập từ khóa / ô chọn tháng. | Kết quả tổng hợp nhóm tra cứu; dữ liệu hoặc phản hồi từ các chức năng con.
+TN-08.1 | Tra cứu hóa đơn theo tháng | Ô chọn tháng. | Kết quả kết nối khớp tiêu chí hoặc thông báo không tìm thấy.
+
+### PM - CongAn rows= 35 cols= 4 
+Mã | Tên chức năng | Input (đầu vào) | Output (đầu ra)
+PM-01 | Đăng nhập & phiên làm việc | Ô nhập tên tài khoản; ô nhập mật khẩu. | Kết quả tổng hợp nhóm đăng nhập & phiên làm việc; dữ liệu hoặc phản hồi từ các chức năng con.
+PM-01.1 | Đăng nhập | Tên tài khoản; mật khẩu. | Token phiên đăng nhập; vai trò PM; thông tin tài khoản/phạm vi được cấp hoặc thông báo lỗi.
+PM-01.1.1 | Nhập tên đăng nhập | Ô nhập tên tài khoản (bắt buộc). | Tên đăng nhập được ghi nhận trên biểu mẫu; thông báo nếu bỏ trống.
+PM-01.1.2 | Nhập mật khẩu | Ô nhập mật khẩu (bắt buộc, ẩn ký tự). | Giá trị trường mật khẩu được tiếp nhận; cảnh báo nếu không đạt yêu cầu.
+PM-01.1.3 | Nhận Token + Role = POLICE | Không nhập — hệ thống trả về sau khi xác thực. | Token truy cập; vai trò; khu trọ được phân quyền nếu áp dụng.
+PM-01.2 | Đăng xuất | Nút Đăng xuất (không có trường nhập). | Phiên đăng nhập bị kết thúc; trở về màn hình đăng nhập.
+PM-02 | Tra cứu phòng trọ (chỉ đọc) | Ô lọc trạng thái; ô nhập số phòng. | Kết quả tổng hợp nhóm tra cứu phòng trọ (chỉ đọc); dữ liệu hoặc phản hồi từ các chức năng con.
+PM-02.1 | Xem danh sách phòng | Ô lọc theo trạng thái. | Danh sách kết nối theo phạm vi và trạng thái tương ứng.
+PM-02.1.1 | Hiển thị: số phòng, sức chứa, số người, trạng thái | Không nhập — hiển thị số phòng, sức chứa, số người, trạng thái. | Thông tin hiển thị: số phòng, sức chứa, số người, trạng thái.
+PM-02.1.2 | Lọc theo trạng thái | Ô lọc theo trạng thái. | Danh sách kết nối đáp ứng bộ lọc.
+PM-02.2 | Xem chi tiết phòng | Chọn dòng phòng. | Hồ sơ/chi tiết kết nối tương ứng; thông báo nếu không tồn tại.
+PM-02.2.1 | Hiển thị thông tin phòng | Không nhập — hiển thị thông tin phòng. | Giao diện hiển thị thông tin phòng; trạng thái lỗi/rỗng nếu có.
+PM-02.2.2 | Hiển thị danh sách người đang ở | Không nhập — hiển thị danh sách người đang ở. | Giao diện hiển thị danh sách người đang ở; trạng thái lỗi/rỗng nếu có.
+PM-02.3 | Tìm kiếm theo số phòng | Ô nhập số phòng. | Kết quả kết nối khớp tiêu chí hoặc thông báo không tìm thấy.
+PM-03 | Tra cứu công dân (chỉ đọc) | Ô nhập CCCD; ô nhập họ tên; ô nhập SĐT. | Kết quả tổng hợp nhóm tra cứu công dân (chỉ đọc); dữ liệu hoặc phản hồi từ các chức năng con.
+PM-03.1 | Tra cứu theo CCCD | Ô nhập từ khóa CCCD. | Kết quả kết nối khớp tiêu chí hoặc thông báo không tìm thấy.
+PM-03.1.1 | Nhập số CCCD (đủ hoặc một phần) | Ô nhập số CCCD (đủ hoặc một phần). | Giá trị số cccd (đủ hoặc một phần) được tiếp nhận và kiểm tra hợp lệ; thông báo lỗi nếu có.
+PM-03.1.2 | Hiển thị hồ sơ: họ tên, ngày sinh, quê quán, phòng | Không nhập — hiển thị hồ sơ: họ tên, ngày sinh, quê quán, phòng. | Thông tin hiển thị: họ tên, ngày sinh, quê quán, phòng.
+PM-03.2 | Tra cứu theo họ tên (không phân biệt hoa thường) | Ô nhập từ khóa họ tên (không phân biệt hoa thường). | Kết quả kết nối khớp tiêu chí hoặc thông báo không tìm thấy.
+PM-03.3 | Tra cứu theo số điện thoại | Ô nhập từ khóa số điện thoại. | Kết quả kết nối khớp tiêu chí hoặc thông báo không tìm thấy.
+PM-03.4 | Xem chi tiết hồ sơ công dân | Chọn dòng hồ sơ. | Hồ sơ/chi tiết kết nối tương ứng; thông báo nếu không tồn tại.
+PM-03.4.1 | Hiển thị thông tin cá nhân đầy đủ | Không nhập — hiển thị thông tin cá nhân đầy đủ. | Giao diện hiển thị thông tin cá nhân đầy đủ; trạng thái lỗi/rỗng nếu có.
+PM-03.4.2 | Hiển thị phòng, hợp đồng, trạng thái tạm trú | Không nhập — hiển thị phòng, hợp đồng, trạng thái tạm trú. | Giao diện hiển thị phòng, hợp đồng, trạng thái tạm trú; trạng thái lỗi/rỗng nếu có.
+PM-04 | Báo cáo lưu trú & tạm trú | Ô lọc phòng; ô chọn định dạng xuất; ô chọn kỳ thống kê. | Kết quả tổng hợp nhóm báo cáo lưu trú & tạm trú; dữ liệu hoặc phản hồi từ các chức năng con.
+PM-04.1 | Xem danh sách tạm trú hiện tại | Bộ lọc phòng. | Danh sách kết nối theo phạm vi và trạng thái tương ứng.
+PM-04.1.1 | Hiển thị: họ tên, ngày sinh, CCCD, quê quán, số phòng | Không nhập — hiển thị họ tên, ngày sinh, CCCD, quê quán, số phòng. | Thông tin hiển thị: họ tên, ngày sinh, CCCD, quê quán, số phòng.
+PM-04.1.2 | Lọc theo phòng | Ô lọc theo phòng. | Danh sách kết nối đáp ứng bộ lọc.
+PM-04.2 | Xem danh sách chưa đăng ký tạm trú | Bộ lọc tùy chọn. | Danh sách kết nối theo phạm vi và trạng thái tương ứng.
+PM-04.3 | Xuất danh sách tạm trú | Nút Xuất; ô chọn định dạng tệp. | File báo cáo theo định dạng yêu cầu; tên/đường dẫn file hoặc thông báo lỗi.
+PM-04.3.1 | Chọn định dạng (CSV/Excel) | Ô chọn định dạng: CSV / Excel. | Định dạng xuất được chọn/kiểm tra hợp lệ.
+PM-04.3.2 | Ghi file và thông báo đường dẫn | Không nhập — nút Xuất ghi tệp và trả đường dẫn. | Bản ghi/file kết nối được lưu; thông báo kết quả hoặc đường dẫn.
+PM-04.4 | Thống kê lưu trú theo phường | Ô chọn kỳ thống kê. | Bản ghi/file kết nối được lưu; thông báo kết quả hoặc đường dẫn.
+PM-04.4.1 | Tổng số phòng, tổng người | Không nhập — hệ thống tổng hợp số phòng, tổng người. | Giá trị thống kê của tổng số phòng, tổng người; bảng hoặc biểu đồ tương ứng.
+PM-04.4.2 | Số tạm trú, số chưa đăng ký | Ô lọc phòng; ô chọn định dạng xuất. | Giá trị thống kê của số tạm trú, số chưa đăng ký; bảng hoặc biểu đồ tương ứng.
+
+### Phan quyen & IO rows= 21 cols= 13 
+Nhóm chức năng | Chủ trọ (AD – ChuTro)
+Input | Chủ trọ (AD – ChuTro)
+Output | Quản lý (MG – QuanLy)
+Input | Quản lý (MG – QuanLy)
+Output | Lễ tân (LT – LeTan)
+Input | Lễ tân (LT – LeTan)
+Output | Nhân viên (NV – NhanVien)
+Input | Nhân viên (NV – NhanVien)
+Output | Người thuê (TN – KhachThue)
+Input | Người thuê (TN – KhachThue)
+Output | Công an (PM – CongAn)
+Input | Công an (PM – CongAn)
+Output
+Đăng nhập & tài khoản cá nhân | ● Tên tài khoản; mật khẩu | ● Token phiên + vai trò ChuTro | ● Tên tài khoản; mật khẩu | ● Token phiên + vai trò QuanLy + khu trọ được gán | ● Tên tài khoản; mật khẩu | ● Token phiên + vai trò LeTan + chuyên môn | ● Tên tài khoản; mật khẩu | ● Token phiên + vai trò NhanVien + chuyên môn | ● Tên tài khoản (CCCD); mật khẩu | ● Token phiên + vai trò KhachThue | ● Tên tài khoản; mật khẩu | ● Token phiên + vai trò CongAn
+Quản lý tài khoản (AD-02) | ● Tên đăng nhập; mật khẩu ban đầu; vai trò (chọn); khu trọ (chọn); lý do khóa | ● Danh sách tài khoản; trạng thái sau thao tác | — | — | — | — | — | — | — | — | — | —
+Quản lý khu trọ (AD-03, tầng 1 — độc quyền) | ● Tên khu trọ; địa chỉ; khu trọ (chọn); người quản lý (chọn) | ● Danh sách khu trọ; kết quả phân công; doanh thu theo khu | — | — | — | — | — | — | — | — | — | —
+Quản lý phòng | ● Số phòng; giá thuê; sức chứa; trạng thái (chọn); mô tả | ● Danh sách/chi tiết phòng; kết quả lưu | ◐ Số phòng; giá thuê; sức chứa; trạng thái (chọn); mô tả (trong khu được giao) | ◐ Danh sách/chi tiết phòng trong khu được giao; từ chối nếu ngoài phạm vi | ○ Bộ lọc trạng thái | ○ Danh sách phòng: số phòng, giá thuê, sức chứa, trạng thái | — | — | — | — | ○ Số phòng/từ khóa; bộ lọc trạng thái | ○ Danh sách/chi tiết phòng: sức chứa, số người, trạng thái
+Quản lý người thuê & tìm kiếm | ● Họ tên; ngày sinh; CCCD; SĐT; quê quán; nơi học/làm; phòng (chọn); tạm trú (chọn); lý do khóa; ô từ khóa tìm kiếm | ● Danh sách/chi tiết người thuê; kết quả chuyển/trả phòng; kết quả tìm kiếm | ◐ Họ tên; ngày sinh; CCCD; SĐT; quê quán; nơi học/làm; phòng (chọn); tạm trú (chọn); ô từ khóa (trong khu được giao) | ◐ Danh sách/chi tiết người thuê trong khu được giao; kết quả tìm kiếm | — | — | — | — | ◐ Ô chọn ảnh QR; ô nhập mã PIN; ô nhập SĐT; ô nhập nơi học/làm | ◐ Hồ sơ cá nhân; kết quả xác nhận phòng; trạng thái cập nhật | ○ Ô nhập CCCD; ô nhập họ tên; ô nhập SĐT; ô nhập số phòng | ○ Hồ sơ công dân, phòng đang ở, trạng thái tạm trú
+Quản lý hợp đồng & phụ lục người ở chung | ● Phòng (chọn); người đại diện (chọn); ngày bắt đầu; ngày kết thúc; giá thuê; tiền cọc; chờ QR (chọn); ghi chú; ngày kết thúc mới; ngày bàn giao; họ tên/CCCD/ngày sinh/quê quán/nơi làm/SĐT từng người ở chung | ● Danh sách/chi tiết hợp đồng; bảng người ở chung; bản in phụ lục | ◐ Phòng (chọn); người đại diện (chọn); ngày bắt đầu; ngày kết thúc; giá thuê; tiền cọc; chờ QR (chọn); ghi chú; danh sách người ở chung (trong khu được giao) | ◐ Danh sách/chi tiết hợp đồng trong khu được giao; phụ lục + bản in | — | — | — | — | ○ Không nhập (Server suy ra phòng từ phiên) | ○ Hợp đồng phòng mình: ngày BĐ/KT, giá thuê, tiền cọc, người đại diện | ○ Mã phòng; CCCD | ○ Phòng, hợp đồng, trạng thái tạm trú
+Điện nước | ● Phòng (chọn); tháng (chọn); chỉ số điện cũ/mới; đơn giá điện; hình thức nước (chọn); chỉ số nước cũ/mới; số người; đơn giá nước | ● Số kWh, số m³, thành tiền; lịch sử chỉ số | ◐ Phòng (chọn); tháng (chọn); chỉ số điện cũ/mới; đơn giá điện; hình thức nước (chọn); chỉ số nước cũ/mới; số người; đơn giá nước (trong khu được giao) | ◐ Số tiêu thụ + thành tiền; lịch sử chỉ số; từ chối sửa khi đã lập hóa đơn | — | — | — | — | ○ Ô chọn khoảng tháng | ○ Chỉ số đầu/cuối kỳ, số tiêu thụ điện/nước, bảng chỉ số theo tháng | — | —
+Hóa đơn & thanh toán | ● Phòng (chọn); tháng (yyyy-MM); phí khác; chọn hóa đơn; nút xác nhận thu tiền | ● Danh sách/chi tiết hóa đơn; trạng thái thanh toán; danh sách phòng còn nợ | ◐ Phòng (chọn); tháng (yyyy-MM); phí khác; chọn hóa đơn; nút xác nhận thu tiền (trong khu được giao) | ◐ Danh sách/chi tiết hóa đơn trong khu được giao; trạng thái sau xác nhận | — | — | — | — | ○ Ô lọc theo tháng | ○ Danh sách hóa đơn phòng mình; chi tiết khoản; lịch sử thanh toán; QR chuyển khoản | — | —
+Duyệt đề xuất (AD-04, tầng 1 — độc quyền) | ● Chọn đề xuất; nút Duyệt; ô nhập lý do từ chối | ● Trạng thái đề xuất mới; kết quả nghiệp vụ; thông báo cho Quản lý | — Chọn hợp đồng/hóa đơn; ô nhập lý do đề xuất | — Mã đề xuất, trạng thái chờ duyệt | — | — | — | — | — Loại sự cố (chọn); mô tả; mức độ (chọn); ảnh đính kèm | — Mã sự cố, trạng thái chờ Chủ trọ duyệt | — | —
+Thống kê doanh thu (AD-05, tầng 1 — độc quyền) | ● Tháng (yyyy-MM); ngày bắt đầu; ngày kết thúc; kỳ dự báo (chọn) | ● Doanh thu tổng hợp, xu hướng, tỷ lệ lấp đầy, hiệu suất quản lý, dự báo; biểu đồ/file | — | — | — | — | — | — | — | — | — | —
+Thống kê vận hành (Quản lý — không gồm doanh thu) | ● Tháng; khu trọ (chọn) | ● Toàn bộ chỉ số vận hành và doanh thu toàn hệ thống | ◐ Tháng; khu trọ (chọn, trong khu được giao) | ◐ Tỷ lệ lấp đầy, số phòng còn nợ, số sự cố (không trả số liệu doanh thu) | — | — | — | — | — | — | — | —
+Báo cáo lưu trú & tạm trú | ● Tháng; bộ lọc phòng | ● Danh sách tạm trú, số chưa đăng ký, file xuất | ◐ Bộ lọc phòng; ô chọn cờ tạm trú | ◐ Danh sách tạm trú trong khu được giao; file xuất; trạng thái cập nhật cờ | — | — | — | — | — | — | ○ Bộ lọc phòng; định dạng xuất (chọn CSV/Excel) | ○ Danh sách tạm trú/chưa đăng ký; file xuất; thống kê theo phường
+Quản lý sự cố | ● Chọn sự cố; lý do; chi phí dự kiến; phương án xử lý; nút duyệt/từ chối | ● Trạng thái sự cố/đề xuất; thông báo cho Quản lý và Người thuê | ◐ Chọn sự cố; nội dung xử lý/tiến độ; lý do + chi phí dự kiến + phương án (khi đề xuất mức Cao) | ◐ Danh sách/chi tiết sự cố trong khu được giao; nhật ký xử lý; thống kê | — | — | — | — | ○ Loại sự cố (chọn); tiêu đề; mô tả; mức độ (chọn); ảnh đính kèm; nội dung bổ sung | ○ Mã sự cố; danh sách sự cố của mình; trạng thái/tiến độ; phản hồi | — | —
+Cấu hình nhận tiền / SePay | ● Ngân hàng (chọn); số tài khoản; chủ tài khoản; mẫu QR (chọn); API token | ● Trạng thái lưu cấu hình; kết quả đối soát; ảnh QR xem trước | ○ Không nhập | ○ Thông tin TK nhận tiền/QR (chỉ xem) | — | — | — | — | ○ Chọn hóa đơn | ○ QR chuyển khoản cho hóa đơn của mình | — | —
+Quản trị phân quyền (ma trận quyền) | ● Vai trò (chọn); tick chọn từng hành động | ● Ma trận quyền hiện hành; trạng thái cập nhật | — | — | — | — | — | — | — | — | — | —
+Xem thông tin phòng đang ở (TN-04) | — | — | — | — | — | — | — | — | ○ Không nhập (dữ liệu từ phiên) | ○ Số phòng, giá thuê, sức chứa, thành viên cùng phòng, hợp đồng phòng | — | —
+Tra cứu công dân & phòng (chỉ đọc) | — | — | — | — | — | — | — | — | — | — | ○ Ô nhập CCCD; ô nhập họ tên; ô nhập SĐT; ô nhập số phòng | ○ Hồ sơ công dân, phòng, hợp đồng, trạng thái tạm trú
+Duyệt & điều phối lịch kiểm tra phòng (LT-02) | ● Chọn lịch; nút duyệt/từ chối; ô nhập lý do; nhân viên (chọn) | ● Danh sách lịch toàn hệ thống; trạng thái sau duyệt; nhân viên đã gán | — | — | ● Chọn lịch; nút Duyệt/Từ chối; ô nhập lý do từ chối; ô chọn nhân viên; nút Gán | ● Bảng lịch: phòng, khách, thời gian, trạng thái; nhân viên phụ trách | — | — | — | — | — | —
+Thực hiện việc kiểm tra phòng (NV-02) | ● Chọn việc; ô nhập kết quả xử lý | ● Việc được gán; trạng thái Đang làm/Hoàn thành; kết quả đã ghi | — | — | — | — | ● Chọn việc; nút Nhận việc; ô nhập kết quả (bắt buộc); nút Hoàn thành | ● Danh sách việc của tôi; trạng thái sau nhận việc; kết quả đã ghi nhận | — | — | — | —
+Đặt lịch xem phòng (public) | ● Phòng (chọn); họ tên; số điện thoại; thời gian muốn xem | ● Mã lịch, trạng thái Chờ duyệt | — | — | — | — | — | — | — | — | — | —
+
+### Ma tran CRUD rows= 16 cols= 6 
+Đối tượng \ Chức năng | Tạo (C) | Đọc (R) | Cập nhật (U) | Xóa (D) | Ghi chú
+Tài khoản | ● | ● | ● | ● | AD-02: tạo, xem, sửa vai trò/trạng thái/khu trọ, khóa/mở khóa, đặt lại mật khẩu, xóa (trừ chính mình).
+Phiên đăng nhập | ● | ● | ● | — | AD/MG/TN/PM: đăng nhập tạo phiên/token; đăng xuất kết thúc phiên; đổi mật khẩu cá nhân.
+Khu trọ | ● | ● | ● | ● | AD-03: thêm, xem, sửa tên/địa chỉ, phân công quản lý; chỉ xóa khi không còn phòng.
+Phòng | ● | ● | ● | ◐ | MG-02: thêm, xem, sửa giá/sức chứa/trạng thái; xóa phòng là đề xuất để AD duyệt.
+Hồ sơ người thuê | ● | ● | ● | — | MG-03: thêm, xem, sửa hồ sơ; chuyển phòng và ghi nhận trả phòng.
+Hợp đồng | ● | ● | ● | ◐ | MG-04: lập, xem, gia hạn; chấm dứt/xóa hợp đồng theo quy trình đề xuất và AD duyệt.
+Chỉ số điện nước | ● | ● | ● | — | MG-05: nhập chỉ số tháng, xem lịch sử; chỉ sửa khi hóa đơn chưa được lập.
+Hóa đơn | ● | ● | ◐ | ◐ | MG-06: lập, xem, xác nhận thanh toán; đề xuất xóa hóa đơn chưa thanh toán, chờ AD duyệt.
+Thanh toán | ● | ● | ● | — | MG-06 xác nhận thanh toán; TN xem lịch sử thanh toán của phòng mình.
+Đề xuất | ● | ● | ● | — | MG gửi đề xuất; AD xem, duyệt/từ chối; cập nhật trạng thái và thông báo kết quả.
+Sự cố | ● | ● | ● | — | TN gửi/theo dõi/bổ sung; MG tiếp nhận, cập nhật tiến độ và hoàn tất; mức cao/khẩn cấp báo AD.
+Dữ liệu lưu trú/tạm trú | — | ● | ● | — | MG xem/xuất danh sách và cập nhật cờ đã đăng ký; PM chỉ tra cứu/xuất, chỉ đọc.
+Nhân sự (nhân viên / lễ tân) | ● | ● | — | — | Bảng nhân viên: gieo sẵn tài khoản demo (letan, donphong, thutien, kythuat); chưa có màn quản lý nhân sự nên thêm/sửa trực tiếp qua CSDL.
+Lịch kiểm tra phòng | ● | ● | ● | — | Khách vãng lai tạo lịch Chờ duyệt từ trang public; lễ tân duyệt/từ chối/gán nhân viên; nhân viên nhận việc và hoàn thành. Không có thao tác xóa.
+Phụ lục / người ở chung | ● | ● | ● | ● | Chủ trọ và Quản lý nhập; lưu là thay toàn bộ danh sách trong 1 giao dịch; CCCD 12 số và không trùng trong cùng hợp đồng.
+
+### Luong du lieu rows= 27 cols= 6 
+Mã luồng | Tên luồng | Từ | Đến | Dữ liệu trao đổi | Điều kiện
+DF-01 | Đăng nhập | Actor (AD/MG/TN/PM) | Module xác thực / Tài khoản | Tên đăng nhập, mật khẩu; kết quả xác thực; token, vai trò và phạm vi được cấp. | Tài khoản hợp lệ, đang hoạt động; sai thông tin thì trả lỗi.
+DF-02 | Đăng xuất | Actor | Module phiên làm việc / Phiên đăng nhập | Token phiên hiện tại; yêu cầu kết thúc phiên; trạng thái đăng xuất. | Token/phiên hiện tại hợp lệ.
+DF-03 | Đổi mật khẩu cá nhân | Actor | Module tài khoản / Tài khoản | Mật khẩu cũ, mật khẩu mới, xác nhận mật khẩu mới; kết quả cập nhật. | Mật khẩu cũ đúng; mật khẩu mới đạt điều kiện và khớp xác nhận.
+DF-04 | Quản lý tài khoản nhân viên | Chủ trọ (AD) | Module quản lý tài khoản / Tài khoản | Thông tin đăng nhập, vai trò, trạng thái, khu trọ được gán; yêu cầu sửa/khóa/mở khóa/đặt lại/xóa. | Chỉ AD được thao tác; không xóa tài khoản đang đăng nhập; MG được gán khu trọ khi phù hợp.
+DF-05 | Quản lý khu trọ và phân công | Chủ trọ (AD) | Module khu trọ / Khu trọ, Tài khoản | Tên, địa chỉ khu trọ; mã khu trọ; tài khoản quản lý được phân công; kết quả lưu. | Chỉ AD; khu trọ phải hợp lệ; chỉ xóa khu trọ khi không còn phòng.
+DF-06 | Quản lý phòng | Quản lý (MG) | Module phòng / Phòng | Số phòng, giá thuê, sức chứa, trạng thái; truy vấn danh sách/chi tiết; kết quả cập nhật. | MG chỉ thao tác trong khu trọ được giao; thao tác xóa phòng phải qua đề xuất duyệt.
+DF-07 | Quản lý người thuê và chuyển/trả phòng | Quản lý (MG) | Module người thuê / Hồ sơ người thuê, Phòng | Hồ sơ cá nhân; phòng được chọn; yêu cầu chuyển phòng/trả phòng; kết quả gán hoặc kết thúc lưu trú. | Phòng được chọn còn chỗ; dữ liệu thuộc khu trọ MG được giao.
+DF-08 | Lập và gia hạn hợp đồng | Quản lý (MG) | Module hợp đồng / Hợp đồng, Phòng, Người thuê | Phòng trống, người đại diện thuộc phòng; ngày bắt đầu/kết thúc, giá thuê, tiền cọc; yêu cầu gia hạn. | MG thao tác trong phạm vi được giao; dữ liệu phòng/người thuê phải phù hợp.
+DF-09 | Đề xuất chấm dứt/xóa hợp đồng | Quản lý (MG) | Module đề xuất / Đề xuất, Hợp đồng | Mã hợp đồng, lý do đề xuất, người gửi, thời gian; mã tham chiếu và trạng thái chờ duyệt. | Hợp đồng còn hiệu lực; chỉ thay đổi nghiệp vụ sau khi AD duyệt.
+DF-10 | Ghi nhận chỉ số điện nước | Quản lý (MG) | Module điện nước / Chỉ số điện nước, Phòng | Phòng, tháng chốt, chỉ số cũ, chỉ số mới, đơn giá; số tiêu thụ và thành tiền. | MG trong phạm vi được giao; chỉ sửa chỉ số khi chưa lập hóa đơn.
+DF-11 | Lập hóa đơn tháng | Quản lý (MG) | Module hóa đơn / Hóa đơn, Chỉ số điện nước, Hợp đồng | Phòng, tháng; tiền phòng, điện, nước, phí khác; tổng tiền; yêu cầu xác nhận lưu. | Dữ liệu kỳ tính phí có sẵn; hóa đơn gắn đúng phòng và tháng.
+DF-12 | Xác nhận thanh toán | Quản lý (MG) | Module thanh toán / Hóa đơn, Thanh toán | Mã hóa đơn, hành động xác nhận, số tiền và thời điểm thanh toán; trạng thái hóa đơn sau cập nhật. | Hóa đơn thuộc phạm vi MG; trạng thái thanh toán hợp lệ.
+DF-13 | Đề xuất xóa hóa đơn | Quản lý (MG) | Module đề xuất / Đề xuất, Hóa đơn | Mã hóa đơn chưa thanh toán, lý do; nội dung gửi Chủ trọ; trạng thái chờ duyệt. | Chỉ áp dụng hóa đơn chưa thanh toán; không xóa trực tiếp khi chưa được duyệt.
+DF-14 | Tra cứu hóa đơn của mình | Người thuê (TN) | Module hóa đơn / Hóa đơn, Thanh toán | Yêu cầu danh sách/chi tiết theo phòng của phiên đăng nhập; tháng, tổng tiền, trạng thái và lịch sử thanh toán. | Server suy ra phòng từ UserId phiên đăng nhập; không nhận tùy ý phongId từ client.
+DF-15 | Xác nhận phòng bằng QR/mã số | Người thuê (TN) | Module xác nhận phòng / Mã xác nhận, Phòng, Người thuê | Mã QR hoặc mã số; kết quả kiểm tra hiệu lực; thông tin gán người thuê vào phòng và thời điểm xác nhận. | Mã hợp lệ, còn hiệu lực, chưa sử dụng; xác nhận đúng người thuê/phòng.
+DF-16 | Gửi và xử lý sự cố | Người thuê (TN) | Module sự cố / Sự cố, Tài khoản | Loại, tiêu đề, mô tả, mức độ, ảnh đính kèm; mã sự cố; trạng thái, tiến độ và phản hồi xử lý. | TN gửi sự cố của mình; MG tiếp nhận/xử lý trong phạm vi; mức cao/khẩn cấp thông báo AD theo quy trình.
+DF-17 | Duyệt đề xuất và thông báo | Chủ trọ (AD) | Module duyệt đề xuất / Đề xuất, Phòng, Hợp đồng, Hóa đơn | Mã đề xuất, quyết định duyệt/từ chối, lý do; lệnh thực thi nghiệp vụ; trạng thái mới và thông báo MG. | Chỉ AD có quyền duyệt; quyết định duyệt mới kích hoạt nghiệp vụ tương ứng.
+DF-18 | Báo cáo lưu trú và tra cứu công dân | Công an (PM) | Module lưu trú / Người thuê, Phòng, Hợp đồng, Dữ liệu tạm trú | Tiêu chí CCCD/họ tên/SĐT/phòng; hồ sơ, phòng, trạng thái tạm trú; danh sách xuất CSV/Excel. | PM chỉ đọc; dữ liệu trả về nằm trong phạm vi được phép; không có thao tác ghi.
+DF-19 | Thống kê vận hành/chiến lược | Quản lý (MG) hoặc Chủ trọ (AD) | Module thống kê / Phòng, Hợp đồng, Hóa đơn, Thanh toán, Sự cố | Kỳ thống kê, bộ lọc; doanh thu, tỷ lệ lấp đầy, giao dịch, đề xuất, sự cố; bảng/biểu đồ hoặc file báo cáo. | MG chỉ xem thống kê vận hành khu trọ được giao; AD xem thống kê toàn hệ thống.
+DF-20 | Kiểm tra quyền truy cập | Actor bất kỳ | Server / SessionStore, MaTranPhanQuyen | Token, vai trò, hành động yêu cầu, phạm vi khu trọ/phòng; kết quả cho phép hoặc từ chối. | Server kiểm tra token và quyền trước khi gọi service; client chỉ ẩn/hiện menu.
+DF-21 | Đăng nhập nhân sự (lễ tân / nhân viên) | Lễ tân (LT) hoặc Nhân viên (NV) | Server / Xác thực, Nhân sự | Tên tài khoản, mật khẩu; kết quả xác thực; token, vai trò suy từ chuyên môn, chuyên môn. | Tài khoản tồn tại, đang hoạt động; tài khoản khóa bị từ chối; sai thông tin trả lỗi chung.
+DF-22 | Đặt lịch xem phòng (public) | Khách vãng lai (trang public) | Module lịch / Lịch kiểm tra phòng, Phòng | Phòng (chọn); họ tên; số điện thoại; thời gian mong muốn; mã lịch và trạng thái Chờ duyệt. | Phòng đang trống; thời gian ở tương lai; không trùng khung ±30 phút trên cùng phòng.
+DF-23 | Lễ tân duyệt và gán nhân viên | Lễ tân (LT) | Module lịch / Lịch kiểm tra phòng, Nhân sự | Chọn lịch; nút duyệt/từ chối; lý do từ chối; nhân viên (chọn). | Chỉ lịch Chờ duyệt mới được duyệt; lý do bắt buộc khi từ chối; chỉ gán sau khi đã duyệt.
+DF-24 | Nhân viên nhận việc và hoàn thành | Nhân viên (NV) | Module lịch / Lịch kiểm tra phòng | Chọn việc; ô nhập kết quả xử lý (đã dọn phòng / đã thu tiền / hỏng hóc kỹ thuật). | Chỉ nhân viên được gán mới nhận được; phải nhận việc trước khi hoàn thành; kết quả bắt buộc.
+DF-25 | Lập phụ lục và nhập người ở chung | Chủ trọ (AD) hoặc Quản lý (MG) | Module hợp đồng / Phụ lục, Hợp đồng, Người thuê, Cấu hình | Chọn hợp đồng; họ tên; CCCD; ngày sinh; quê quán; nơi học/làm; SĐT của từng người ở chung. | CCCD đúng 12 số, không trùng trong danh sách và không trùng người đại diện; hợp đồng 3 người = 1 đại diện + 2 dòng phụ lục.
+DF-26 | Tìm kiếm người thuê | Quản lý (MG) hoặc Chủ trọ (AD) | Module người thuê / Người thuê | Ô nhập từ khóa (họ tên / CCCD / số điện thoại). | Từ khóa rỗng trả danh sách đầy đủ; kết quả giới hạn tối đa 50 dòng.
