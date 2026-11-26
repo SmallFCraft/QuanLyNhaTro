@@ -17,7 +17,13 @@
       background: linear-gradient(135deg, #D9E6F7 0%, #EBF1FA 46%, #D7E2F3 100%);
       background-attachment: fixed;
       overflow-x: hidden;
+      scrollbar-width: none;
       -webkit-font-smoothing: antialiased;
+    }
+
+    /* Chỉ ẩn thanh dọc của vùng nội dung; giữ thanh ngang khi bảng rộng. */
+    :is(.shell-main > main, .shell-main > .legacy-panes, .tenant-content)::-webkit-scrollbar {
+      width: 0;
     }
 
     .tabular, .mono { font-variant-numeric: tabular-nums; }
