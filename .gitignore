@@ -3,3 +3,6 @@ obj/
 *.user
 .vs/
 *.suo
+.qa/
+.playwright-mcp/
+template_quanlytro.zip
