@@ -1,8 +1,19 @@
+# Build artifacts
 bin/
 obj/
 *.user
-.vs/
 *.suo
+.vs/
+
+# Local QA / scratch (khong track)
 .qa/
+.scratch/
 .playwright-mcp/
+.claude/
+
+# Tool caches
+.gitnexus/
+.impeccable/
+
+# Archive tao tam khi dong goi template
 template_quanlytro.zip
