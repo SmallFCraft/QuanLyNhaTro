@@ -3,302 +3,145 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Khách thuê — Quản lý nhà trọ</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+  <title>Sổ phòng của tôi — Quản lý nhà trọ</title>
   <link rel="stylesheet" href="../shared/css/tokens.css?v=2" />
   <link rel="stylesheet" href="../shared/css/base.css?v=2" />
-  <link rel="stylesheet" href="khachthue.css?v=2" />
+  <link rel="stylesheet" href="khachthue.css?v=3" />
 </head>
-<body class="glass-role-compat">
+<body class="glass-role-compat tenant-page">
+  <svg class="tenant-symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="ti-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7"/></symbol>
+    <symbol id="ti-bill" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2ZM9 8h6M9 12h6"/></symbol>
+    <symbol id="ti-history" viewBox="0 0 24 24"><path d="M3 11a9 9 0 1 1 2 7M3 4v7h7M12 7v5l3 2"/></symbol>
+    <symbol id="ti-bolt" viewBox="0 0 24 24"><path d="m13 2-9 12h7l-1 8 10-13h-7Z"/></symbol>
+    <symbol id="ti-water" viewBox="0 0 24 24"><path d="M12 3S5 11 5 15a7 7 0 0 0 14 0c0-4-7-12-7-12ZM8 15a4 4 0 0 0 4 4"/></symbol>
+    <symbol id="ti-qr" viewBox="0 0 24 24"><path d="M3 3h6v6H3ZM15 3h6v6h-6ZM3 15h6v6H3ZM15 15h2v2h-2ZM21 15v3h-3v3h3M12 3v3M12 10v3h4M3 12h6M12 18v3"/></symbol>
+    <symbol id="ti-alert" viewBox="0 0 24 24"><path d="m12 3 10 18H2ZM12 9v5M12 17v.1"/></symbol>
+    <symbol id="ti-exit" viewBox="0 0 24 24"><path d="M9 4H4v16h5M9 12h12m-5-5 5 5-5 5"/></symbol>
+    <symbol id="ti-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></symbol>
+    <symbol id="ti-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V3H3v13h5"/></symbol>
+  </svg>
   <div class="glass-orbs" aria-hidden="true"><span class="orb orb-1"></span><span class="orb orb-2"></span><span class="orb orb-3"></span><span class="orb orb-4"></span></div>
   <div class="drawer-backdrop" id="drawerBackdrop"></div>
-  <section id="s09" class="screen-view active">
-<div class="win tenant-shell" id="khachthue">
-          <header class="tenant-topbar userbar">
-            <div class="tenant-topbar-user usr">
-              <div class="tenant-avatar-sm">HA</div>
-              <div>
-                <div id="tname" style="font-size:14px; font-weight:700; line-height:1.2;">Nguyễn Hoàng Anh</div>
-                <div style="font-size:11px; color:var(--text-muted);">Cổng Khách thuê · Ngũ Hành Sơn</div>
-              </div>
-            </div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span class="vai_tro tenant tenant-room-pill" id="troom-userbar">
-                <svg class="ms-icon" viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M19 19V4h-4V3H5v16H3v2h12V6h2v15h4v-2h-2zm-6 0H7V5h6v14zm-3-8h2v2h-2v-2z"/></svg>
-                <span id="troom-userbar-text">Phòng 101 · Khu A</span>
-              </span>
-              
-              <button type="button" class="icon-btn" data-goto="s01" title="Đăng xuất" aria-label="Đăng xuất" >
-                <svg class="ms-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M17 7l-1.4 1.4L18.2 11H8v2h10.2l-2.6 2.6L17 17l5-5-5-5zM4 5h8V3H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8v-2H4V5z"/></svg>
-              </button>
-            </div>
-          </header>
-
-          <div class="tenant-subbar headline">
-            <div class="tenant-subbar-inner">
-              <div class="tenant-headline-row">
-                <div>
-                  <span class="pill pill-gold pill-nodot badge-module" id="thead-badge" style="margin-bottom:5px;">Cổng thông tin cư dân</span>
-                  <h1 class="page-title" id="thead-title">Tổng Quan Phòng 101</h1>
-                </div>
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                  <button type="button" class="btn btn-secondary btn-sm" id="btnTenantReportIssue">
-                    <svg class="ms-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
-                    Báo sự cố
-                  </button>
-                  <button type="button" class="btn btn-primary btn-sm" id="btnShowCheckin">
-                    Nhận phòng QR/PIN
-                  </button>
-                </div>
-              </div>
-
-              <!-- Desktop 4-tab contract bar (#tenantTabs) -->
-              <div class="tabs tenant-tabs" id="tenantTabs" role="tablist">
-                <button type="button" class="tab tenant-tab-btn on" role="tab" aria-selected="true" data-tab="overview">
-                  <svg class="ms-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M3 13h8V3H3v10zm2-8h4v6H5V5zm8 16h8V11h-8v10zm2-8h4v6h-4v-6zM13 3v6h8V3h-8zm6 4h-4V5h4v2zM3 21h8v-6H3v6zm2-4h4v2H5v-2z"/></svg>
-                  Tổng quan
-                </button>
-                <button type="button" class="tab tenant-tab-btn" role="tab" aria-selected="false" data-tab="current">
-                  <svg class="ms-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M19.5 3.5 18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2 7.5 3.5 6 2v14H3v3c0 1.7 1.3 3 3 3h12c1.7 0 3-1.3 3-3V2l-1.5 1.5zM15 20H6c-.6 0-1-.4-1-1v-1h10v2zm4-1c0 .6-.4 1-1 1s-1-.4-1-1v-3H8V5h11v14z"/></svg>
-                  Hóa đơn kỳ này
-                </button>
-                <button type="button" class="tab tenant-tab-btn" role="tab" aria-selected="false" data-tab="history">
-                  <svg class="ms-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M13 3a9 9 0 0 0-9 9H1l3.9 3.9.1.1L9 12H6a7 7 0 1 1 2.1 5l-1.4 1.4A9 9 0 1 0 13 3zm-1 5v5l4.3 2.5.7-1.2-3.5-2.1V8H12z"/></svg>
-                  Lịch sử
-                </button>
-                <button type="button" class="tab tenant-tab-btn" role="tab" aria-selected="false" data-tab="utilities">
-                  <svg class="ms-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M11 21h-1l1-7H7.5c-.9 0-.3-.8-.3-.8L12.9 3h1l-1 7h3.5c.5 0 .6.3.4.7L11 21z"/></svg>
-                  Điện &amp; Nước
-                </button>
-              </div>
+  <section id="s09" class="screen-view active" aria-label="Cổng khách thuê">
+    <div class="win tenant-shell" id="khachthue">
+      <header class="tenant-topbar userbar">
+        <div class="tenant-brand">
+          <span class="tenant-brand-mark"><svg class="tenant-icon" aria-hidden="true"><use href="#ti-home"/></svg></span>
+          <span><strong>Nhà trọ Ngũ Hành Sơn</strong><small>Cổng khách thuê</small></span>
+        </div>
+        <div class="tenant-account">
+          <span id="tname">Khách thuê</span>
+          <span class="tenant-room-pill" id="troom-userbar"><svg class="tenant-icon" aria-hidden="true"><use href="#ti-home"/></svg><span id="troom-userbar-text">Đang tải…</span></span>
+          <button type="button" class="icon-btn" data-goto="s01" title="Đăng xuất" aria-label="Đăng xuất"><svg class="tenant-icon" aria-hidden="true"><use href="#ti-exit"/></svg></button>
+        </div>
+      </header>
+      <div class="tenant-subbar">
+        <div class="tenant-subbar-inner">
+          <div class="tenant-headline-row">
+            <div><h1 id="thead-title">Sổ phòng của tôi</h1><p class="tenant-intro" id="thead-badge">Theo dõi cước, xem hóa đơn và quản lý việc nhận phòng.</p></div>
+            <div class="tenant-actions">
+              <button type="button" class="btn btn-secondary" id="btnTenantReportIssue"><svg class="tenant-icon" aria-hidden="true"><use href="#ti-alert"/></svg>Báo sự cố</button>
+              <button type="button" class="btn btn-secondary" id="btnShowCheckin"><svg class="tenant-icon" aria-hidden="true"><use href="#ti-qr"/></svg>Nhận phòng QR/PIN</button>
             </div>
           </div>
-
-          <main class="content tenant-content">
-            <!-- BR-19: MÀN HÌNH NHẬN PHÒNG QR/PIN KHI CHƯA CÓ PHÒNG (#tab-nhan-phong) -->
-            <section id="tab-overview" class="tab-pane active">
-        <div class="hero">
-          <img class="hero-img" src="img/hero-khu-tro.jpg" alt="" onerror="this.closest('.hero').classList.add('no-img');this.remove()">
-        </div>
-
-        <!-- profile -->
-        <div class="card mb10">
-          <div class="profile">
-            <div class="pavatar" id="tavatar">KT</div>
-            <div class="pinfo">
-              <div class="pname">
-                <b id="tname-card">Khách thuê</b>
-                <span class="tag avail" id="troom-badge">Phòng</span>
-              </div>
-              <div class="psub" id="tsub-info">Khu trọ Ngũ Hành Sơn · Hệ thống phòng trọ</div>
-            </div>
+          <div class="tenant-tabs" id="tenantTabs" role="tablist" aria-label="Thông tin phòng thuê">
+            <button type="button" id="tenant-tab-overview" class="tab tenant-tab-btn on" role="tab" aria-selected="true" aria-controls="tab-overview" data-tab="overview"><svg class="tenant-icon" aria-hidden="true"><use href="#ti-home"/></svg>Tổng quan</button>
+            <button type="button" id="tenant-tab-current" class="tab tenant-tab-btn" role="tab" aria-selected="false" aria-controls="tab-current" tabindex="-1" data-tab="current"><svg class="tenant-icon" aria-hidden="true"><use href="#ti-bill"/></svg>Hóa đơn kỳ này</button>
+            <button type="button" id="tenant-tab-history" class="tab tenant-tab-btn" role="tab" aria-selected="false" aria-controls="tab-history" tabindex="-1" data-tab="history"><svg class="tenant-icon" aria-hidden="true"><use href="#ti-history"/></svg>Lịch sử</button>
+            <button type="button" id="tenant-tab-utilities" class="tab tenant-tab-btn" role="tab" aria-selected="false" aria-controls="tab-utilities" tabindex="-1" data-tab="utilities"><svg class="tenant-icon" aria-hidden="true"><use href="#ti-bolt"/></svg>Điện &amp; Nước</button>
           </div>
         </div>
-
-        <!-- due alert -->
-        <div class="alert-due" id="due-alert-box">
-          <div class="l">
-            <span class="ico"><i class="fas fa-exclamation"></i></span>
-            <span class="txt" id="due-alert-text">Kỳ cước gần nhất sẽ hiện tại đây khi có dữ liệu</span>
-          </div>
-          <span class="tag unpaid" id="due-alert-tag">Chưa nộp</span>
-        </div>
-
-        <!-- summary snapshot card -->
-        <div class="card mb10">
-          <div class="hdr">
-            <span>Tóm tắt cước gần nhất</span>
-            <button class="btn btn-ghost btn-sm" onclick="switchTenantTab('current')"><i class="fas fa-external-link-alt"></i> Xem chi tiết kỳ này</button>
-          </div>
-          <div class="kpis">
-            <div class="kpi">
-              <div class="lbl"><i class="fas fa-calendar-days"></i> Kỳ cước</div>
-              <div class="val"><span id="ov-month">—</span></div>
-            </div>
-            <div class="kpi warn">
-              <div class="lbl"><i class="fas fa-money-bill-wave"></i> Tổng cần nộp</div>
-              <div class="val"><span id="ov-total">0 đ</span></div>
-              <div class="sub" id="ov-trang_thai">Chưa nạp</div>
-            </div>
-            <div class="kpi">
-              <div class="lbl"><i class="fas fa-bolt"></i> Điện tiêu thụ</div>
-              <div class="val"><span id="ov-elec">0</span> <i>kWh</i></div>
-              <div class="sub" id="ov-elec-sub">Chưa có chỉ số kỳ này</div>
-            </div>
-            <div class="kpi green">
-              <div class="lbl"><i class="fas fa-tint"></i> Nước tiêu thụ</div>
-              <div class="val"><span id="ov-nuoc">0</span> <i id="ov-nuoc-unit">khối</i></div>
-              <div class="sub" id="ov-nuoc-sub">Chưa có chỉ số kỳ này</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="duo">
-          <div class="card">
-            <div class="hdr"><i class="fas fa-file-signature"></i> Hợp đồng &amp; hạn</div>
-            <div class="vchip" id="tcontract-due">Hợp đồng: Đang hiệu lực</div>
-          </div>
-          <div class="card">
-            <div class="hdr"><i class="fas fa-chart-column"></i> Xu hướng cước</div>
-            <!-- ponytail: #ov-chart là khe cắm SVG — Task 4 vẽ; khung có min-height để lưới .duo không nhảy khi rỗng -->
-            <div class="chart-slot" id="ov-chart"></div>
-          </div>
-        </div>
-      </section>
-<section id="tab-current" class="tab-pane">
-        <!-- receipt -->
-        <div class="card receipt mb10">
-          <div class="rhdr">
-            <div class="l">
-              <i class="fas fa-file-invoice-dollar"></i>
-              <div>
-                <div class="rtitle" id="rc-title">Chi tiết quyết toán cước</div>
-                <div class="mono rcode" id="rc-code">MÃ SỐ BẢNG KÊ: —</div>
+      </div>
+      <main class="content tenant-content" id="tenant-main" tabindex="-1">
+        <section id="tab-overview" class="tab-pane active" role="tabpanel" aria-labelledby="tenant-tab-overview" tabindex="0">
+          <div class="tenant-overview-grid">
+            <article class="tenant-bill" aria-labelledby="billHeading">
+              <div class="tenant-bill-copy">
+                <div class="tenant-bill-top"><h2 id="billHeading">Kỳ cước gần nhất</h2><span id="ov-month" class="tenant-period">—</span></div>
+                <p class="tenant-bill-amount" id="ov-total">—</p>
+                <p id="ov-trang_thai" class="tenant-bill-state">Đang tải dữ liệu cước…</p>
+                <button type="button" class="btn tenant-bill-button" onclick="switchTenantTab('current')">Xem hóa đơn<svg class="tenant-icon" aria-hidden="true"><use href="#ti-arrow"/></svg></button>
               </div>
-            </div>
-            <span class="tag unpaid" id="rc-trang_thai-tag">Chưa thanh toán</span>
+              <img class="tenant-bill-art" src="img/hero-khu-tro.jpg" alt="" />
+            </article>
+            <article class="card tenant-residency">
+              <div class="tenant-card-heading"><h2>Thông tin cư trú</h2><svg class="tenant-icon" aria-hidden="true"><use href="#ti-home"/></svg></div>
+              <div class="tenant-profile"><span class="pavatar" id="tavatar" aria-hidden="true">KT</span><div><strong id="tname-card">Khách thuê</strong><p id="troom-badge">Đang tải phòng…</p></div></div>
+              <p id="tsub-info" class="tenant-muted">Nhà trọ Ngũ Hành Sơn</p>
+              <div class="tenant-contract"><span>Hợp đồng thuê</span><p id="tcontract-due">Đang tải thông tin hợp đồng…</p></div>
+            </article>
           </div>
-          <div class="rbody">
-            <div class="rrow">
-              <div class="rline">
-                <span class="rlbl"><i class="fas fa-door-closed"></i>Tiền thuê phòng cố định</span>
-                <span class="amount" id="rc-room">0 đ</span>
-              </div>
-            </div>
-            <div class="rrow">
-              <div class="rline">
-                <span class="rlbl"><i class="fas fa-bolt amber"></i>Điện năng tiêu thụ</span>
-                <span class="amount" id="rc-elec">0 đ</span>
-              </div>
-              <div class="mono rsub"><span id="rc-elec-sub">Chưa có chỉ số kỳ này</span></div>
-            </div>
-            <div class="rrow">
-              <div class="rline">
-                <span class="rlbl"><i class="fas fa-tint"></i>Nước sinh hoạt</span>
-                <span class="amount" id="rc-water">0 đ</span>
-              </div>
-              <div class="mono rsub"><span id="rc-water-sub">Chưa có chỉ số kỳ này</span></div>
-            </div>
-            <div class="rrow">
-              <div class="rline">
-                <span class="rlbl"><i class="fas fa-wifi"></i>Dịch vụ quản lý &amp; tiện ích</span>
-                <span class="amount" id="rc-other">0 đ</span>
-              </div>
-            </div>
+          <div class="alert-due" id="due-alert-box" role="status"><svg class="tenant-icon" aria-hidden="true"><use href="#ti-bill"/></svg><p id="due-alert-text">Trạng thái kỳ cước sẽ hiển thị sau khi tải dữ liệu.</p><span class="tag" id="due-alert-tag">Đang tải</span></div>
+          <div class="tenant-section-heading"><h2>Chỉ số kỳ gần nhất</h2><button type="button" class="btn btn-ghost" onclick="switchTenantTab('utilities')">Xem điện &amp; nước<svg class="tenant-icon" aria-hidden="true"><use href="#ti-arrow"/></svg></button></div>
+          <div class="tenant-meter-grid">
+            <article class="card tenant-meter"><span class="tenant-meter-icon"><svg class="tenant-icon" aria-hidden="true"><use href="#ti-bolt"/></svg></span><div><h3>Điện tiêu thụ</h3><p class="tenant-meter-value"><span id="ov-elec">—</span><span>kWh</span></p><p id="ov-elec-sub" class="tenant-muted">Đang tải chỉ số…</p></div></article>
+            <article class="card tenant-meter"><span class="tenant-meter-icon"><svg class="tenant-icon" aria-hidden="true"><use href="#ti-water"/></svg></span><div><h3>Nước sinh hoạt</h3><p class="tenant-meter-value"><span id="ov-nuoc">—</span><span id="ov-nuoc-unit">khối</span></p><p id="ov-nuoc-sub" class="tenant-muted">Đang tải chỉ số…</p></div></article>
           </div>
-          <div class="rfoot">
-            <div>
-              <div class="flbl">Tổng cần thanh toán</div>
-              <div class="mono ftot"><span id="rc-total">0</span> <span class="cur">đ</span></div>
-            </div>
-            <span class="tag unpaid" id="rc-due-tag">Chưa thu</span>
+          <article class="card tenant-trend"><div class="tenant-card-heading"><h2>Điện &amp; nước theo kỳ</h2><span class="tenant-muted">Ước tính từ hóa đơn</span></div><p class="tenant-chart-note">Hai dãy cột có thang riêng, không so sánh độ cao giữa điện và nước. Chỉ gồm các kỳ trên trang lịch sử đang tải.</p><div id="ov-chart" class="chart-slot"><p class="chart-empty">Biểu đồ sẽ hiện khi tải được hóa đơn.</p></div><div class="tenant-chart-legend"><span><i class="legend-electric"></i>Điện (kWh)</span><span><i class="legend-water"></i><span data-water-unit>Nước</span></span></div></article>
+        </section>
+        <section id="tab-current" class="tab-pane" role="tabpanel" aria-labelledby="tenant-tab-current" tabindex="0">
+          <div class="tenant-section-heading"><div><h2>Hóa đơn &amp; thanh toán</h2><p class="tenant-muted">Đối chiếu bảng kê trước khi chuyển khoản.</p></div></div>
+          <div class="tenant-payment-grid">
+            <article class="card receipt">
+              <div class="rhdr"><div><h3 class="rtitle" id="rc-title">Chi tiết cước</h3><p class="rcode" id="rc-code">Đang tải mã bảng kê…</p></div><span class="tag" id="rc-trang_thai-tag">Đang tải</span></div>
+              <div class="rbody">
+                <div class="rrow"><div class="rline"><span class="rlbl">Tiền thuê phòng</span><span class="amount" id="rc-room">—</span></div></div>
+                <div class="rrow"><div class="rline"><span class="rlbl">Tiền điện</span><span class="amount" id="rc-elec">—</span></div><p class="rsub" id="rc-elec-sub">Đang tải chỉ số…</p></div>
+                <div class="rrow"><div class="rline"><span class="rlbl">Tiền nước</span><span class="amount" id="rc-water">—</span></div><p class="rsub" id="rc-water-sub">Đang tải chỉ số…</p></div>
+                <div class="rrow"><div class="rline"><span class="rlbl">Dịch vụ &amp; phí khác</span><span class="amount" id="rc-other">—</span></div></div>
+              </div>
+              <div class="rfoot"><div><span>Tổng kỳ cước</span><p class="ftot"><span id="rc-total">—</span> <span class="cur">đ</span></p></div><span class="tag" id="rc-due-tag">Đang tải</span></div>
+            </article>
+            <article class="card pay-card">
+              <div class="tenant-card-heading"><h3>Thông tin chuyển khoản</h3><svg class="tenant-icon" aria-hidden="true"><use href="#ti-qr"/></svg></div>
+              <div class="pay-body" id="pay-qr"><p class="pay-empty">Đang tải thông tin nhận tiền…</p></div>
+              <div class="tenant-pay-actions"><button type="button" class="btn btn-primary" id="btn-copy-transfer" onclick="copyTransfer()" disabled><svg class="tenant-icon" aria-hidden="true"><use href="#ti-copy"/></svg>Sao chép thông tin chuyển khoản</button><button type="button" class="btn btn-secondary" onclick="kiemTraThanhToan()" id="btn-kiem-tra">Đã chuyển, kiểm tra lại</button></div>
+              <p class="pay-check-note" id="pay-check-note" role="status">Sau khi chuyển khoản, kiểm tra lại để xem trạng thái máy chủ đã ghi nhận.</p>
+            </article>
           </div>
-        </div>
-        <!-- Thanh toán: QR SePay dựng từ cấu hình chủ trọ + hóa đơn chưa thu của chính khách -->
-        <div class="card pay-card mb10">
-          <div class="hdr"><i class="fas fa-qrcode"></i> Chuyển khoản &amp; quét QR</div>
-          <div class="pay-body" id="pay-qr">
-            <div class="pay-empty">Đang tải thông tin nhận tiền...</div>
+          <button type="button" class="btn btn-ghost tenant-history-link" onclick="switchTenantTab('history')">Xem toàn bộ lịch sử<svg class="tenant-icon" aria-hidden="true"><use href="#ti-arrow"/></svg></button>
+        </section>
+        <section id="tab-history" class="tab-pane" role="tabpanel" aria-labelledby="tenant-tab-history" tabindex="0">
+          <div class="tenant-section-heading"><div><h2>Lịch sử kỳ cước</h2><p class="tenant-muted">Chọn kỳ cước để xem chi tiết từng khoản và trạng thái thanh toán.</p></div></div>
+          <div class="card tenant-history">
+            <div class="tblwrap"><table class="tbl"><caption class="tenant-sr-only">Danh sách kỳ cước của phòng thuê</caption><thead><tr><th scope="col">Kỳ cước</th><th scope="col" class="num">Tổng tiền</th><th scope="col">Thời điểm đóng</th><th scope="col" class="num">Trạng thái</th></tr></thead><tbody id="tenant-history-body"><tr class="empty"><td colspan="4">Đang tải lịch sử…</td></tr></tbody></table></div>
+            <div class="tblfoot"><span id="tenant-page-info">Đang tải số kỳ…</span><div class="pagination-controls" id="tenant-pagination"><button type="button" class="btn btn-secondary" id="btn-prev-page" onclick="changeTenantPage(-1)" disabled>Trước</button><span class="page-indicator" id="tenant-page-indicator">Trang 1 / 1</span><button type="button" class="btn btn-secondary" id="btn-next-page" onclick="changeTenantPage(1)" disabled>Sau</button></div></div>
           </div>
-        </div>
-        <div class="rowbn">
-          <button class="btn btn-primary btn-sm" onclick="copyTransfer()"><i class="fas fa-copy"></i> Sao chép nội dung chuyển khoản</button>
-          <button class="btn btn-outline btn-sm" onclick="kiemTraThanhToan()" id="btn-kiem-tra">
-            <i class="fas fa-rotate"></i> Đã chuyển, kiểm tra lại</button>
-          <button class="btn btn-outline btn-sm" onclick="switchTenantTab('history')"><i class="fas fa-list"></i> Xem toàn bộ lịch sử</button>
-        </div>
-        <p class="pay-check-note" id="pay-check-note">
-          Hệ thống tự đối soát mỗi phút. Chuyển khoản xong, bấm nút trên nếu muốn kiểm tra ngay.
-        </p>
-      </section>
-<section id="tab-history" class="tab-pane">
-        <div class="tblwrap">
-          <table class="tbl">
-            <thead><tr><th>Kỳ cước</th><th class="num">Tổng tiền</th><th>Thời điểm đóng</th><th class="num">Trạng thái</th></tr></thead>
-            <tbody id="tenant-history-body">
-              <tr class="empty"><td colspan="4">Đang nạp dữ liệu...</td></tr>
-            </tbody>
-          </table>
-          <div class="tblfoot">
-            <span id="tenant-page-info">Tổng: 0 bản ghi</span>
-            <div class="pagination-controls" id="tenant-pagination">
-              <button type="button" class="btn btn-ghost btn-xs" id="btn-prev-page" onclick="changeTenantPage(-1)" disabled>
-                <i class="fas fa-chevron-left"></i> Trước
-              </button>
-              <span class="mono page-indicator" id="tenant-page-indicator">Trang 1 / 1</span>
-              <button type="button" class="btn btn-ghost btn-xs" id="btn-next-page" onclick="changeTenantPage(1)" disabled>
-                Sau <i class="fas fa-chevron-right"></i>
-              </button>
+        </section>
+        <section id="tab-utilities" class="tab-pane" role="tabpanel" aria-labelledby="tenant-tab-utilities" tabindex="0">
+          <div class="tenant-section-heading"><div><h2>Theo dõi điện &amp; nước</h2><p class="tenant-muted">Tổng hợp từ các hóa đơn trên trang lịch sử hiện tại, không phải toàn bộ hợp đồng.</p></div></div>
+          <div class="kpis" id="util-kpis"><p class="empty-state">Đang tải dữ liệu cước…</p></div>
+          <article class="card tenant-trend"><h3>Sản lượng ước tính theo kỳ</h3><p class="tenant-chart-note">Quy đổi từ tiền điện, tiền nước theo đơn giá hiện có; có thể chênh lệch nếu đơn giá từng kỳ thay đổi. Hai dãy cột dùng thang riêng, không so sánh độ cao với nhau.</p><div id="util-charts"><p class="chart-empty">Biểu đồ sẽ hiển thị khi tải được dữ liệu.</p></div><div class="tenant-chart-legend"><span><i class="legend-electric"></i>Điện (kWh)</span><span><i class="legend-water"></i><span data-water-unit>Nước</span></span></div></article>
+          <p class="tenant-muted tenant-footnote">Số liệu chi tiết của từng kỳ nằm trong <button type="button" class="tenant-text-link" onclick="switchTenantTab('history')">Lịch sử kỳ cước</button>.</p>
+        </section>
+        <section id="tab-nhan-phong" class="tab-pane" aria-labelledby="checkinTitle" tabindex="0">
+          <div class="tenant-checkin-layout">
+            <div class="tenant-checkin-guide"><svg class="tenant-checkin-icon" aria-hidden="true"><use href="#ti-qr"/></svg><h2 id="checkinTitle">Nhận phòng của bạn</h2><p>Dùng mã QR hoặc PIN trên phiếu bàn giao để kích hoạt phòng thuê.</p><ol><li>Chuẩn bị phiếu bàn giao từ chủ trọ.</li><li>Chọn ảnh QR, camera hoặc nhập PIN.</li><li>Kiểm tra thông báo xác nhận từ hệ thống.</li></ol><p class="tenant-muted">Mã chỉ dùng một lần. Không chia sẻ mã nhận phòng với người khác.</p></div>
+            <div class="card checkin-card">
+              <div class="method-tabs" id="checkinTabs" role="tablist" aria-label="Cách nhận phòng">
+                <button type="button" id="method-anh" class="tab method-btn on" data-tab="anh" role="tab" aria-selected="true" aria-controls="checkin-anh">Ảnh QR</button>
+                <button type="button" id="method-camera" class="tab method-btn" data-tab="camera" role="tab" aria-selected="false" aria-controls="checkin-camera" tabindex="-1">Camera</button>
+                <button type="button" id="method-pin" class="tab method-btn" data-tab="pin" role="tab" aria-selected="false" aria-controls="checkin-pin" tabindex="-1">Mã PIN</button>
+              </div>
+              <div id="checkin-anh" class="checkin-pane active" role="tabpanel" aria-labelledby="method-anh"><svg class="tenant-upload-icon" aria-hidden="true"><use href="#ti-qr"/></svg><h3>Chọn ảnh phiếu QR</h3><p class="tenant-muted">Ảnh cần rõ nét và nhìn thấy trọn mã QR.</p><div class="field"><label for="qrFile">Ảnh QR (PNG/JPG)</label><input id="qrFile" class="input" type="file" accept="image/png,image/jpeg" /></div><canvas id="qrCanvas" class="qr-canvas" hidden></canvas></div>
+              <div id="checkin-camera" class="checkin-pane" role="tabpanel" aria-labelledby="method-camera"><h3>Quét mã bằng camera</h3><p class="tenant-muted">Chỉ cấp quyền camera khi bạn chọn bắt đầu quét.</p><video id="qrVideo" class="qr-video" autoplay muted playsinline aria-label="Camera quét QR nhận phòng"></video><button type="button" class="btn btn-secondary" id="btn-cam">Bật camera</button></div>
+              <div id="checkin-pin" class="checkin-pane" role="tabpanel" aria-labelledby="method-pin"><h3>Nhập mã trên phiếu bàn giao</h3><p class="tenant-muted" id="pinHint">PIN gồm 8 chữ số do chủ trọ cung cấp.</p><div class="field"><label for="qrPin">Mã PIN nhận phòng</label><input id="qrPin" class="input pin-inp" type="text" inputmode="numeric" pattern="[0-9]{8}" maxlength="8" autocomplete="off" aria-describedby="pinHint" /></div><button type="button" class="btn btn-primary" id="btnTenantCheckinSubmit">Xác nhận nhận phòng</button></div>
+              <button type="button" class="btn btn-ghost" id="btnBackToOverview">Quay lại sổ phòng</button>
             </div>
           </div>
-        </div>
-      </section>
-<section id="tab-utilities" class="tab-pane">
-        <div class="kpis" id="util-kpis"></div>
-        <div id="util-charts"></div>
-      </section>
-  <section id="tab-nhan-phong" class="tab-pane">
-              <div class="card checkin-card">
-                <div style="margin-bottom:10px;">
-                  <span class="pill pill-amber">BR-19 · Chờ nhận phòng</span>
-                </div>
-                <h2 class="card-title" style="font-size:19px; margin-bottom:4px;">Kích hoạt phòng bằng mã QR / PIN</h2>
-                <p class="helper-text" style="margin-bottom:16px;">Chọn ảnh QR, quét webcam (chỉ cấp quyền trên khachthue/) hoặc nhập mã PIN 8 số từ phiếu bàn giao.</p>
-
-                <div class="method-tabs" id="checkinTabs" role="tablist">
-                  <button type="button" class="method-btn active" data-tcheckin="anh">Chọn ảnh QR</button>
-                  <button type="button" class="method-btn" data-tcheckin="camera">Quét webcam</button>
-                  <button type="button" class="method-btn" data-tcheckin="pin">Nhập PIN 8 số</button>
-                </div>
-
-                <div id="checkin-anh" class="checkin-pane">
-                  <div class="qr-box">
-                    <svg viewBox="0 0 21 21" width="168" height="168" role="img" aria-label="Mẫu QR nhận phòng">
-                      <rect width="21" height="21" fill="#FFFFFF" />
-                      <path fill="#0F172A" d="M0,0 h7 v7 h-7 z M1,1 v5 h5 v-5 z M2,2 h3 v3 h-3 z M14,0 h7 v7 h-7 z M15,1 v5 h5 v-5 z M16,2 h3 v3 h-3 z M0,14 h7 v7 h-7 z M1,15 v5 h5 v-5 z M2,16 h3 v3 h-3 z M8,1 h2 v2 h-2 z M11,2 h2 v2 h-2 z M8,6 h5 v1 h-5 z M2,9 h4 v2 h-4 z M8,9 h3 v3 h-3 z M13,9 h4 v2 h-4 z M18,9 h3 v2 h-3 z M9,14 h3 v3 h-3 z M14,14 h4 v2 h-4 z M15,17 h5 v3 h-5 z" />
-                    </svg>
-                  </div>
-                  <div class="field" style="max-width:300px; margin:0 auto 14px; text-align:left;">
-                    <label for="qrFile">Tải ảnh phiếu QR (PNG/JPG)</label>
-                    <input id="qrFile" class="input" type="file" accept="image/*" />
-                  </div>
-                </div>
-
-                <div id="checkin-camera" class="checkin-pane" style="display:none; margin-bottom:16px;">
-                  <div style="background:#0F172A; color:#E2E8F0; border-radius:10px; padding:26px 16px; max-width:320px; margin:0 auto 12px;">
-                    <div style="font-weight:600; margin-bottom:6px;">Khung quét Webcam (jsqr.min.js)</div>
-                    <div style="font-size:12px; color:#94A3B8;">Quyền camera chỉ bật riêng cho URL khachthue/</div>
-                  </div>
-                  <button type="button" class="btn btn-secondary btn-sm" id="btn-cam" data-toast="Đang yêu cầu quyền camera trên WebView2 khachthue/...">Bật Camera</button>
-                </div>
-
-                <div id="checkin-pin" class="checkin-pane" style="display:none; max-width:300px; margin:0 auto 14px;">
-                  <div class="field" style="text-align:left;">
-                    <label for="qrPin">Mã PIN 8 số (mẫu: 48291056)</label>
-                    <input id="qrPin" class="input mono" type="text" maxlength="8" placeholder="Nhập 8 chữ số..." value="48291056" />
-                  </div>
-                </div>
-
-                <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
-                  <button type="button" class="btn btn-primary" id="btnTenantCheckinSubmit">Xác nhận nhận phòng</button>
-                  <button type="button" class="btn btn-secondary" id="btnBackToOverview">Quay lại Tổng quan</button>
-                </div>
-                <p class="helper-text" style="margin-top:10px;">Mã chỉ dùng một lần — hệ thống xóa sạch SHA-256 hash ngay sau kích hoạt.</p>
-              </div>
-  </section>
-  <div class="modal-backdrop" id="appModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <div class="modal-box">
-      <div class="card-header" style="margin-bottom:12px;"><h2 class="card-title" id="modalTitle">Thông báo</h2><button type="button" class="icon-btn" id="closeModalBtn" aria-label="Đóng">✕</button></div>
-      <div id="modalBody"></div>
+        </section>
+      </main>
+      <footer class="tenant-footer"><span id="tstatus-text">Cổng khách thuê</span><span>Dữ liệu được cập nhật từ máy chủ</span></footer>
     </div>
-  </div>
+  </section>
+  <div id="tenant-live" class="tenant-sr-only" aria-live="polite" aria-atomic="true"></div>
+  <div class="modal-backdrop" id="appModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-box"><div class="tenant-card-heading"><h2 id="modalTitle">Thông báo</h2><button type="button" class="icon-btn" id="closeModalBtn" aria-label="Đóng"><svg class="tenant-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div><div id="modalBody"></div></div></div>
   <div class="toast-stack" id="toastStack" aria-live="polite"></div>
   <script src="../shared/js/bridge.js?v=2"></script>
   <script src="../shared/js/ui.js?v=2"></script>
   <script src="../shared/js/chrome.js?v=3"></script>
   <script src="../shared/js/vendor/jsqr.min.js?v=2"></script>
-  <script src="js/khach_thue.js?v=2"></script>
+  <script src="js/khach_thue.js?v=3"></script>
 </body>
 </html>
