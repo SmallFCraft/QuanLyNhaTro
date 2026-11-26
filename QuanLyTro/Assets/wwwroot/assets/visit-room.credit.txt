@@ -1,0 +1,8 @@
+An Empty Room
+Photographer: Gustavo Galeano Maz
+Original photo page: https://www.pexels.com/photo/an-empty-room-9826455/
+Downloaded image: https://images.pexels.com/photos/9826455/pexels-photo-9826455.jpeg?auto=compress&cs=tinysrgb&w=1400
+License: Pexels License
+License terms: https://www.pexels.com/license/
+Changes: resized to 1200 x 800 and recompressed as progressive JPEG; CSS crops and darkens the image.
+Illustrative stock room, not a photograph of the rooms available for booking and not evidence of room amenities. No endorsement implied.

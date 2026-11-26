@@ -7,15 +7,15 @@
   <link rel="stylesheet" href="shared/css/tokens.css?v=2" />
   <link rel="stylesheet" href="shared/css/base.css?v=2" />
   <link rel="stylesheet" href="datlich.css" />
+  <script src="datlich-nav.js" defer></script>
 </head>
-<body>
-  <div class="glass-orbs" aria-hidden="true"><span class="orb orb-1"></span><span class="orb orb-2"></span><span class="orb orb-3"></span><span class="orb orb-4"></span></div>
+<body class="booking-document">
   <div id="s08b" class="screen-view active public-page booking-page">
-    <header class="public-header">
+    <header class="booking-top">
       <div class="booking-wrap booking-header">
         <a class="booking-brand" href="#trang-chu">
           <span class="booking-brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 9-7 9 7M5 10v10h14V10M10 20v-6h4v6" /></svg>
+            <svg class="booking-icon" viewBox="0 0 24 24" width="22" height="22"><path d="m3 11 9-7 9 7M5 10v10h14V10M10 20v-6h4v6" /></svg>
           </span>
           <span><strong>Nhà trọ Ngũ Hành Sơn</strong><small>Đà Nẵng</small></span>
         </a>
@@ -25,90 +25,128 @@
           <a href="#quy-trinh">Quy trình</a>
           <a href="#khu-tro">Khu trọ</a>
         </nav>
-        <a class="btn btn-secondary booking-login" href="auth/index.html" data-goto="s01">Đăng nhập</a>
+        <a class="booking-pill booking-login" href="auth/index.html" data-goto="s01">
+          <span class="booking-arrow" aria-hidden="true"><svg class="booking-icon" viewBox="0 0 24 24" width="16" height="16"><path d="M5 12h13m-5-5 5 5-5 5" /></svg></span>
+          Đăng nhập
+        </a>
       </div>
     </header>
 
-    <main class="booking-wrap booking-main">
-      <section class="public-hero booking-hero" id="trang-chu" aria-labelledby="bookingTitle">
-        <div class="booking-hero-copy">
-          <h1 id="bookingTitle">Xem phòng trọ quanh Ngũ Hành Sơn</h1>
-          <p>Chọn phòng đang trống và gửi giờ bạn muốn đến xem. Không cần đăng nhập.</p>
-          <div class="booking-actions">
-            <a class="btn btn-primary" href="#phong-trong">Xem phòng trống</a>
-            <a class="booking-link" href="#quy-trinh">Cách đặt lịch</a>
+    <main>
+      <section class="booking-hero" id="trang-chu" aria-labelledby="bookingTitle">
+        <div class="booking-wrap booking-hero-layout">
+          <div class="booking-hero-copy">
+            <h1 id="bookingTitle">Xem phòng trọ <span>quanh Ngũ Hành Sơn</span></h1>
+            <p>Chọn phòng đang trống và gửi giờ bạn muốn đến xem. Không cần đăng nhập.</p>
+            <div class="booking-actions">
+              <a class="booking-pill booking-pill-white" href="#phong-trong">
+                <span class="booking-arrow" aria-hidden="true"><svg class="booking-icon" viewBox="0 0 24 24" width="19" height="19"><path d="M5 12h13m-5-5 5 5-5 5" /></svg></span>
+                Xem phòng trống
+              </a>
+              <a class="booking-pill booking-pill-ghost" href="#quy-trinh">
+                Cách đặt lịch
+                <svg class="booking-icon" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" focusable="false"><path d="M12 5v13m-5-5 5 5 5-5" /></svg>
+              </a>
+            </div>
+            <ul class="booking-trust" role="list">
+              <li><strong>2</strong> khu trọ</li>
+              <li>Giá mẫu từ <strong>2.300.000 đ/tháng</strong></li>
+              <li>Tối đa <strong>3</strong> yêu cầu chờ duyệt/ngày/SĐT</li>
+            </ul>
+          </div>
+
+          <section class="booking-form-card" id="dat-lich" aria-labelledby="bookingFormTitle">
+            <h2 id="bookingFormTitle">Đặt lịch xem phòng</h2>
+            <p class="booking-lead" id="bookingFormNote" role="status">Chọn được phòng trống thì mới có thể gửi yêu cầu.</p>
+            <form id="publicBookingForm" novalidate>
+              <fieldset id="bookingFields" disabled>
+                <div class="booking-contact">
+                  <div class="field"><label for="bookHoTen">Họ tên</label><input id="bookHoTen" class="input" autocomplete="name" required /></div>
+                  <div class="field"><label for="bookSdt">SĐT</label><input id="bookSdt" class="input" type="tel" autocomplete="tel" required /></div>
+                </div>
+                <div class="field">
+                  <label for="bookPhong">Chọn phòng</label>
+                  <select id="bookPhong" class="select" required><option value="">Chưa có phòng để chọn</option></select>
+                </div>
+                <div class="field"><label for="bookThoiGian">Thời gian</label><input id="bookThoiGian" class="input" type="datetime-local" required /></div>
+                <p id="bookingFeedback" class="booking-feedback" role="status"></p>
+                <button type="submit" class="booking-pill booking-submit" id="bookingSubmit">Gửi yêu cầu</button>
+              </fieldset>
+              <p class="booking-limit">Tối đa 3 yêu cầu chờ duyệt mỗi ngày cho mỗi số điện thoại.</p>
+            </form>
+          </section>
+        </div>
+      </section>
+
+      <section class="booking-wrap booking-rooms" id="phong-trong" aria-labelledby="vacantTitle">
+        <div class="booking-rooms-head">
+          <div>
+            <h2 id="vacantTitle" tabindex="-1">Phòng đang trống</h2>
+            <p class="booking-lead">Chọn một phòng để điền vào lịch hẹn.</p>
+          </div>
+          <div class="booking-refresh">
+            <p><span id="roomsUpdated" class="tabular" hidden></span><span id="roomRefreshWarning" role="status"></span></p>
+            <button type="button" class="booking-pill booking-pill-outline" id="retryVacantRooms" hidden>Tải lại danh sách</button>
           </div>
         </div>
-        <div class="booking-doorway" aria-hidden="true"><span></span></div>
-      </section>
-
-      <section class="public-body booking-body" id="phong-trong" aria-labelledby="vacantTitle">
-        <div class="booking-list">
-          <h2 id="vacantTitle">Phòng đang trống</h2>
-          <p class="booking-lead">Chọn một phòng để điền vào lịch hẹn.</p>
-          <div class="vacant-grid" id="publicVacantGrid" hidden></div>
-          <div class="card booking-state" id="publicRoomState">
-            <div role="status">
-              <h3 id="roomStateTitle">Đang tải danh sách phòng…</h3>
-              <p id="roomStateMessage">Danh sách phòng sẽ xuất hiện khi tải xong.</p>
-            </div>
-            <div class="booking-actions" id="roomStateActions" hidden>
-              <button type="button" class="btn btn-secondary" id="retryVacantRooms">Tải lại danh sách</button>
-              <a class="booking-link" href="#khu-tro">Xem giá tham khảo</a>
-            </div>
+        <div class="vacant-grid" id="publicVacantGrid" hidden></div>
+        <div class="booking-state" id="publicRoomState">
+          <div role="status">
+            <h3 id="roomStateTitle">Đang tải danh sách phòng…</h3>
+            <p id="roomStateMessage">Danh sách phòng sẽ xuất hiện khi tải xong.</p>
           </div>
-        </div>
-        <div class="card booking-form-card">
-          <h2>Đặt lịch xem phòng</h2>
-          <p class="booking-lead" id="bookingFormNote">Chọn được phòng trống thì mới có thể gửi yêu cầu.</p>
-          <form id="publicBookingForm" novalidate>
-            <fieldset id="bookingFields" disabled>
-              <div class="field"><label for="bookHoTen">Họ tên</label><input id="bookHoTen" class="input" autocomplete="name" required /></div>
-              <div class="field"><label for="bookSdt">SĐT</label><input id="bookSdt" class="input" type="tel" autocomplete="tel" required /></div>
-              <div class="field">
-                <label for="bookPhong">Chọn phòng</label>
-                <select id="bookPhong" class="select" required><option value="">Chưa có phòng để chọn</option></select>
-              </div>
-              <div class="field"><label for="bookThoiGian">Thời gian</label><input id="bookThoiGian" class="input" type="datetime-local" required /></div>
-              <p id="bookingFeedback" class="booking-feedback" role="status"></p>
-              <button type="submit" class="btn btn-primary booking-submit" id="bookingSubmit">Gửi yêu cầu</button>
-            </fieldset>
-            <p class="helper-text booking-limit">Tối đa 3 yêu cầu chờ duyệt mỗi ngày cho mỗi số điện thoại.</p>
-          </form>
+          <a class="booking-link" id="roomStateActions" href="#khu-tro" hidden>Xem giá tham khảo</a>
         </div>
       </section>
 
-      <section class="booking-section" id="quy-trinh" aria-labelledby="processTitle">
-        <h2 id="processTitle">Từ chọn phòng đến lịch hẹn</h2>
-        <ol class="booking-steps" role="list">
-          <li><span aria-hidden="true">1</span><h3>Chọn phòng</h3><p>Xem giá thuê và chọn phòng đang trống phù hợp.</p></li>
-          <li><span aria-hidden="true">2</span><h3>Gửi yêu cầu</h3><p>Điền họ tên, số điện thoại và thời gian muốn đến xem.</p></li>
-          <li><span aria-hidden="true">3</span><h3>Chờ duyệt lịch</h3><p>Sau khi gửi, lịch ở trạng thái chờ duyệt, chưa được xác nhận.</p></li>
-        </ol>
-      </section>
+      <div class="booking-bento-area">
+        <div class="booking-wrap booking-bento">
+          <section class="booking-visit" aria-labelledby="visitTitle">
+            <img class="booking-visit-photo" src="assets/visit-room.jpg" alt="Ảnh minh họa phòng trống có cửa sổ, không phải phòng đang cho thuê." width="1200" height="800" loading="lazy" decoding="async" />
+            <div>
+              <h2 id="visitTitle">Xem phòng tận nơi</h2>
+              <p>Đặt giờ đến xem và tự đánh giá không gian trước khi quyết định thuê.</p>
+              <small class="booking-visit-caption">Ảnh phòng minh họa · Gustavo Galeano Maz / Pexels</small>
+            </div>
+          </section>
 
-      <section class="booking-section booking-area" id="khu-tro" aria-labelledby="areaTitle">
-        <div>
-          <h2 id="areaTitle">Khu trọ và giá tham khảo</h2>
-          <p class="booking-lead">Khu A và Khu B thuộc phường Ngũ Hành Sơn, Đà Nẵng. Mức giá bên cạnh lấy từ bốn phòng mẫu, không thể hiện tình trạng còn phòng.</p>
-          <a class="booking-link" href="#phong-trong">Xem giá phòng đang trống</a>
+          <section class="booking-process" id="quy-trinh" aria-labelledby="processTitle">
+            <h2 id="processTitle">Cách đặt lịch</h2>
+            <ol class="booking-steps" role="list">
+              <li><svg class="booking-icon booking-step-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-7 9 7M5 10v10h14V10M10 20v-6h4v6" /></svg><div><h3>Chọn phòng</h3><p>Xem giá và chọn phòng còn trống.</p></div></li>
+              <li><svg class="booking-icon booking-step-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="14" rx="2" /><path d="M8 4v4m8-4v4M4 11h16m-11 5 2 2 4-4" /></svg><div><h3>Gửi yêu cầu</h3><p>Điền thông tin và giờ muốn đến xem.</p></div></li>
+              <li><svg class="booking-icon booking-step-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="M12 7v5l3 2" /></svg><div><h3>Chờ duyệt lịch</h3><p>Yêu cầu đã gửi chưa phải lịch đã xác nhận.</p></div></li>
+            </ol>
+          </section>
+
+          <section class="booking-area" id="khu-tro" aria-labelledby="areaTitle">
+            <h2 id="areaTitle">Khu trọ và giá tham khảo</h2>
+            <p class="booking-lead">Khu A và Khu B thuộc phường Ngũ Hành Sơn, Đà Nẵng.</p>
+            <dl class="booking-rates tabular" aria-label="Giá thuê tham khảo theo khu">
+              <div><dt>Khu A</dt><dd>2.300.000 – 2.500.000 đ/tháng</dd></div>
+              <div><dt>Khu B</dt><dd>2.500.000 – 2.700.000 đ/tháng</dd></div>
+            </dl>
+            <p class="booking-rates-note">Giá từ bốn phòng mẫu, không thể hiện tình trạng còn phòng.</p>
+            <p class="booking-area-limit">Tối đa <strong>3</strong> yêu cầu chờ duyệt mỗi ngày cho mỗi số điện thoại.</p>
+            <a class="booking-link" href="#phong-trong">Xem giá phòng đang trống</a>
+          </section>
         </div>
-        <dl class="booking-rates" aria-label="Giá thuê tham khảo theo khu">
-          <div><dt>Khu A</dt><dd>2.300.000 – 2.500.000 đ/tháng</dd></div>
-          <div><dt>Khu B</dt><dd>2.500.000 – 2.700.000 đ/tháng</dd></div>
-        </dl>
-      </section>
+      </div>
     </main>
 
     <footer class="booking-footer">
       <div class="booking-wrap">
-        <span>Nhà trọ Ngũ Hành Sơn, Đà Nẵng</span>
+        <div>
+          <strong>Nhà trọ Ngũ Hành Sơn, Đà Nẵng</strong>
+          <small>Ảnh minh họa: “Han river bridge in Vietnam” — kizamaya · CC BY 2.0 · Đã thu nhỏ và nén lại.</small>
+        </div>
         <a class="booking-link" href="#trang-chu">Về đầu trang</a>
       </div>
     </footer>
   </div>
 
   <script src="shared/js/bridge.js?v=2"></script>
+  <script src="shared/js/ui.js"></script>
   <script>
     (function () {
       const grid = document.getElementById("publicVacantGrid");
@@ -125,7 +163,14 @@
       const feedback = document.getElementById("bookingFeedback");
       const nameInput = document.getElementById("bookHoTen");
       const timeInput = document.getElementById("bookThoiGian");
+      const updated = document.getElementById("roomsUpdated");
+      const refreshWarning = document.getElementById("roomRefreshWarning");
+      const readyNote = "Lịch hẹn cần được duyệt sau khi bạn gửi yêu cầu.";
+      let loadingRooms = false;
       let vacantRooms = [];
+      let renderedRooms = null;
+      let pendingRooms = null;
+      let pendingUpdatedAt = "";
 
       function esc(s) {
         return String(s).replace(/[&<>"']/g, function (c) {
@@ -146,30 +191,52 @@
       }
 
       function renderVacantRooms(rooms) {
-        vacantRooms = rooms;
+        const snapshot = JSON.stringify(rooms.map(room => [room.phongId, room.soPhong, room.tenKhu, room.giaThue]));
+        if (snapshot === renderedRooms) return;
+        renderedRooms = snapshot;
+        const selected = select.value;
         const ready = rooms.length > 0;
+        const selectionLost = selected && !rooms.some(room => String(room.phongId) === selected);
         fields.disabled = !ready;
-        note.textContent = ready ? "Lịch hẹn cần được duyệt sau khi bạn gửi yêu cầu." : "Chọn được phòng trống thì mới có thể gửi yêu cầu.";
+        note.textContent = selectionLost ? "Phòng bạn chọn không còn trống. Vui lòng chọn phòng khác." :
+          ready ? readyNote : "Chọn được phòng trống thì mới có thể gửi yêu cầu.";
         select.replaceChildren(new Option(ready ? "Chọn phòng muốn xem" : "Chưa có phòng để chọn", ""));
         grid.innerHTML = rooms.map(function (room) {
           const roomLabel = "Phòng " + room.soPhong;
           const price = formatVnd(room.giaThue);
           select.add(new Option(roomLabel + " — " + room.tenKhu + " (" + price + ")", room.phongId));
           return '<article class="vacant-card">' +
-            '<div class="booking-room-top"><h3 class="vacant-room-num">' + esc(roomLabel) + '</h3><span class="pill pill-green">Trống</span></div>' +
+            '<div class="booking-room-top"><h3 class="vacant-room-num">' + esc(roomLabel) + '</h3><span class="booking-room-stock">Trống</span></div>' +
             '<p class="booking-room-zone">' + esc(room.tenKhu) + '</p>' +
             '<p class="booking-room-price tabular">' + esc(price) + '</p>' +
-            '<button type="button" class="btn btn-secondary" aria-label="Đặt lịch xem ' + esc(roomLabel) + '" data-pick-room="' + room.phongId + '">Đặt lịch xem</button></article>';
+            '<button type="button" class="booking-pill booking-pill-outline" aria-label="Đặt lịch xem ' + esc(roomLabel) + '" data-pick-room="' + room.phongId + '">Đặt lịch xem</button></article>';
         }).join("");
+        if (selected && !selectionLost) select.value = selected;
         grid.hidden = !ready;
         state.hidden = ready;
+        if (!ready) {
+          stateTitle.textContent = "Hiện chưa có phòng trống";
+          stateMessage.textContent = "Chưa thể đặt lịch lúc này. Bạn có thể xem quy trình đặt lịch hoặc tải lại danh sách sau.";
+        }
+      }
+
+      function applyPendingRooms() {
+        // Let focus settle before replacing controls or hiding their container.
+        const active = document.activeElement;
+        if (pendingRooms === null || active === select || grid.contains(active) ||
+            (pendingRooms.length && state.contains(active)) ||
+            (!pendingRooms.length && fields.contains(active))) return;
+        const rooms = pendingRooms;
+        pendingRooms = null;
+        renderVacantRooms(rooms);
+        updated.textContent = pendingUpdatedAt;
+        updated.hidden = false;
       }
 
       async function loadVacantRooms() {
-        if (retry.disabled) return;
-        retry.disabled = true;
-        stateTitle.textContent = "Đang tải danh sách phòng…";
-        stateMessage.textContent = "Danh sách phòng sẽ xuất hiện khi tải xong.";
+        if (loadingRooms) return;
+        loadingRooms = true;
+        retry.ariaBusy = "true";
         try {
           const res = await window.QuanLyTroBridge.invoke("PHONG_LAY_TRONG_PUBLIC", {});
           if (!res?.success || !Array.isArray(res.data) || !res.data.every(room =>
@@ -177,27 +244,48 @@
             typeof room.tenKhu === "string" && Number.isFinite(room.giaThue) && room.giaThue >= 0)) {
             throw new Error("Danh sách phòng không hợp lệ.");
           }
-          renderVacantRooms(res.data);
-          if (!vacantRooms.length) {
-            stateTitle.textContent = "Hiện chưa có phòng trống";
-            stateMessage.textContent = "Chưa thể đặt lịch lúc này. Bạn có thể xem quy trình đặt lịch hoặc tải lại danh sách sau.";
-          }
+          vacantRooms = res.data;
+          pendingRooms = res.data;
+          pendingUpdatedAt = "Cập nhật lần cuối " + new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+          applyPendingRooms();
+          refreshWarning.textContent = "";
         } catch {
-          renderVacantRooms([]);
-          stateTitle.textContent = "Không tải được danh sách phòng";
-          stateMessage.textContent = "Chưa thể kiểm tra phòng trống. Hãy kiểm tra kết nối với máy chủ rồi thử tải lại.";
+          if (renderedRooms === null) {
+            fields.disabled = true;
+            stateTitle.textContent = "Không tải được danh sách phòng";
+            stateMessage.textContent = "Chưa thể kiểm tra phòng trống. Hãy kiểm tra kết nối với máy chủ rồi thử tải lại.";
+          } else {
+            refreshWarning.textContent = "Danh sách chưa cập nhật. Đang giữ kết quả lần trước; bạn có thể tải lại.";
+          }
         } finally {
-          retry.disabled = false;
+          loadingRooms = false;
+          retry.ariaBusy = "false";
+          retry.hidden = false;
           stateActions.hidden = false;
         }
       }
+
+      document.addEventListener("focusout", function () {
+        if (pendingRooms !== null) requestAnimationFrame(applyPendingRooms);
+      });
+      select.addEventListener("change", function () {
+        if (vacantRooms.some(room => String(room.phongId) === select.value)) note.textContent = readyNote;
+      });
 
       retry.addEventListener("click", loadVacantRooms);
       grid.addEventListener("click", function (e) {
         const button = e.target.closest("[data-pick-room]");
         if (!button) return;
-        select.value = button.dataset.pickRoom;
-        nameInput.focus();
+        if (vacantRooms.some(room => String(room.phongId) === button.dataset.pickRoom)) {
+          select.value = button.dataset.pickRoom;
+          note.textContent = readyNote;
+          nameInput.focus({ preventScroll: true });
+          document.getElementById("dat-lich").scrollIntoView({ block: "start" });
+        } else {
+          // The list changed while the visitor was using this button.
+          note.textContent = "Phòng bạn chọn không còn trống. Vui lòng chọn phòng khác.";
+          document.getElementById("vacantTitle").focus({ preventScroll: true });
+        }
       });
 
       form.addEventListener("submit", async function (e) {
@@ -233,6 +321,7 @@
 
       setDefaultBookingTime();
       loadVacantRooms();
+      startAutoRefresh(loadVacantRooms, 30000);
     })();
   </script>
 </body>
